@@ -91,14 +91,16 @@
             "error",
             "warn", 
             "info",
-            "verbose"
+            "verbose",
+            "trace"
           ],
           "enumDescriptions": [
             "Disable all logging",
             "Only log errors",
             "Log warnings and errors",
             "Log info, warnings, and errors",
-            "Log all messages including debug information"
+            "Log all messages including debug information",
+            "Log all messages including trace information (most verbose)"
           ],
           "description": "Controls the verbosity of logging output in the NuGet Package Viewer output channel"
         }

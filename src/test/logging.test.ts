@@ -11,6 +11,7 @@ suite('Logging Test Suite', () => {
 		assert.strictEqual(LogLevel.Warn, 1);
 		assert.strictEqual(LogLevel.Info, 2);
 		assert.strictEqual(LogLevel.Verbose, 3);
+		assert.strictEqual(LogLevel.Trace, 4);
 	});
 
 	test('Log levels are ordered correctly', () => {
@@ -18,5 +19,6 @@ suite('Logging Test Suite', () => {
 		assert.strictEqual(LogLevel.Error < LogLevel.Warn, true);
 		assert.strictEqual(LogLevel.Warn < LogLevel.Info, true);
 		assert.strictEqual(LogLevel.Info < LogLevel.Verbose, true);
+		assert.strictEqual(LogLevel.Verbose < LogLevel.Trace, true);
 	});
 });

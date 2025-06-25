@@ -13,7 +13,8 @@ export enum LogLevel {
 	Error = 0,
 	Warn = 1,
 	Info = 2,
-	Verbose = 3
+	Verbose = 3,
+	Trace = 4
 }
 
 // Map string config values to LogLevel enum
@@ -22,7 +23,8 @@ const logLevelMap: { [key: string]: LogLevel } = {
 	'error': LogLevel.Error,
 	'warn': LogLevel.Warn,
 	'info': LogLevel.Info,
-	'verbose': LogLevel.Verbose
+	'verbose': LogLevel.Verbose,
+	'trace': LogLevel.Trace
 };
 
 export function getOutputChannel(): vscode.LogOutputChannel {
@@ -79,6 +81,13 @@ export function logDebug(message: string): void {
 		return;
 	}
 	getOutputChannel().debug(message);
+}
+
+export function logTrace(message: string): void {
+	if (!shouldLog(LogLevel.Trace)) {
+		return;
+	}
+	getOutputChannel().trace(message);
 }
 
 // This method is called when your extension is activated

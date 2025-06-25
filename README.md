@@ -81,6 +81,7 @@ This extension provides the following configuration options:
   * `warn`: Log warnings and errors  
   * `info`: Log info, warnings, and errors (default)
   * `verbose`: Log all messages including debug information
+  * `trace`: Log all messages including trace information (most verbose)
 
 ## 🐛 Known Issues
 
