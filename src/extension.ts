@@ -5,10 +5,11 @@ import { NuGetPackageEditorProvider } from './packageEditorProvider';
 import { NuGetPackageParser } from './packageParser';
 
 // Global output channel for logging
-let outputChannel: vscode.OutputChannel;
+let outputChannel: vscode.LogOutputChannel;
 
 // Log level constants
 export enum LogLevel {
+	Off = -1,
 	Error = 0,
 	Warn = 1,
 	Info = 2,
@@ -17,13 +18,14 @@ export enum LogLevel {
 
 // Map string config values to LogLevel enum
 const logLevelMap: { [key: string]: LogLevel } = {
+	'off': LogLevel.Off,
 	'error': LogLevel.Error,
 	'warn': LogLevel.Warn,
 	'info': LogLevel.Info,
 	'verbose': LogLevel.Verbose
 };
 
-export function getOutputChannel(): vscode.OutputChannel {
+export function getOutputChannel(): vscode.LogOutputChannel {
 	if (!outputChannel) {
 		outputChannel = vscode.window.createOutputChannel('NuGet Package Viewer', { log: true });
 	}
@@ -39,7 +41,12 @@ function getCurrentLogLevel(): LogLevel {
 
 // Check if a message should be logged based on current log level
 function shouldLog(messageLevel: LogLevel): boolean {
-	return messageLevel <= getCurrentLogLevel();
+	const currentLevel = getCurrentLogLevel();
+	// If logging is off, don't log anything
+	if (currentLevel === LogLevel.Off) {
+		return false;
+	}
+	return messageLevel <= currentLevel;
 }
 
 // Logging utility functions
@@ -47,18 +54,16 @@ export function logInfo(message: string): void {
 	if (!shouldLog(LogLevel.Info)) {
 		return;
 	}
-	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[INFO] ${message}`);
+	getOutputChannel().info(message);
 }
 
 export function logError(message: string, error?: Error): void {
 	if (!shouldLog(LogLevel.Error)) {
 		return;
 	}
-	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[ERROR] ${message}`);
+	getOutputChannel().error(message);
 	if (error) {
-		getOutputChannel().appendLine(`[ERROR] ${error.stack || error.message}`);
+		getOutputChannel().error(error.stack || error.message);
 	}
 }
 
@@ -66,16 +71,14 @@ export function logWarning(message: string): void {
 	if (!shouldLog(LogLevel.Warn)) {
 		return;
 	}
-	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[WARN] ${message}`);
+	getOutputChannel().warn(message);
 }
 
 export function logDebug(message: string): void {
 	if (!shouldLog(LogLevel.Verbose)) {
 		return;
 	}
-	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[DEBUG] ${message}`);
+	getOutputChannel().debug(message);
 }
 
 // This method is called when your extension is activated

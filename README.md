@@ -76,6 +76,7 @@ To see detailed logging information and troubleshoot issues:
 This extension provides the following configuration options:
 
 * `nupkg-viewer.logLevel`: Controls the verbosity of logging output in the NuGet Package Viewer output channel
+  * `off`: Disable all logging
   * `error`: Only log errors
   * `warn`: Log warnings and errors  
   * `info`: Log info, warnings, and errors (default)

@@ -87,12 +87,14 @@
           "type": "string",
           "default": "info",
           "enum": [
+            "off",
             "error",
             "warn", 
             "info",
             "verbose"
           ],
           "enumDescriptions": [
+            "Disable all logging",
             "Only log errors",
             "Log warnings and errors",
             "Log info, warnings, and errors",

@@ -19,6 +19,7 @@ export function testLogging(): void {
 export function testLogLevelFiltering(): void {
     console.log('Testing log level filtering...');
     console.log('Messages will appear in the output channel based on your nupkg-viewer.logLevel setting:');
+    console.log('- off: No messages (logging disabled)');
     console.log('- error: Only error messages');
     console.log('- warn: Warning and error messages');
     console.log('- info: Info, warning, and error messages (default)');
