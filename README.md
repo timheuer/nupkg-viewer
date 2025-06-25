@@ -2,6 +2,8 @@
 
 A VS Code extension that provides a comprehensive visualization of NuGet packages (.nupkg files). View package metadata, explore contents, and get detailed information similar to nuget.org with an intuitive file explorer interface.
 
+![2025-06-25_12-23-25](https://github.com/user-attachments/assets/7efa5365-52c2-44d8-a1c2-210446de107f)
+
 ## ✨ Features
 
 ### 📦 Package Information Display
@@ -14,7 +16,6 @@ A VS Code extension that provides a comprehensive visualization of NuGet package
 - **File Tree Navigation**: Browse package contents in an intuitive tree structure
 - **File Preview**: View file contents directly within VS Code
 - **Size Information**: See file sizes for better understanding of package composition
-- **Syntax Highlighting**: Proper highlighting for code files
 
 ### 🔗 Dependencies & Metadata
 - **Dependency List**: View all package dependencies with version information
@@ -26,7 +27,6 @@ A VS Code extension that provides a comprehensive visualization of NuGet package
 - **VS Code Theme Integration**: Seamlessly integrates with your current VS Code theme
 - **Responsive Design**: Works well on different screen sizes
 - **Modal File Viewer**: View files in a dedicated modal with proper formatting
-- **Marketplace-Style Layout**: Familiar interface similar to VS Code extension marketplace
 
 ### 📊 Comprehensive Logging
 - **Detailed Operation Logs**: Track all extension operations in real-time
@@ -38,9 +38,9 @@ A VS Code extension that provides a comprehensive visualization of NuGet package
 
 ### Opening a Package
 
-1. **Double-click method**: Double-click on any `.nupkg` file in the Explorer to open it with the NuGet Package Viewer
-2. **Right-click method**: Right-click on any `.nupkg` file in the Explorer and select "View NuGet Package"
-3. **Command Palette**: Open Command Palette (`Ctrl+Shift+P`) and run "Open Package Viewer" to select a file
+1. **Explorer method**: Click on any `.nupkg` file in the Explorer to open it with the NuGet Package Viewer
+2. **Right-click method**: Right-click on any `.nupkg` file in the Explorer and select "NuGet: View Package"
+3. **Command Palette**: Open Command Palette (`Ctrl+Shift+P`) and run "NuGet: Open Package" to select a file
 
 ### Navigating the Interface
 - **Package Header**: Shows icon, title, version, and quick action buttons
@@ -51,7 +51,6 @@ A VS Code extension that provides a comprehensive visualization of NuGet package
 ### External Actions
 - Click **🌐 Project** to open the project URL
 - Click **📦 Repository** to view the source repository
-- Click **📄 License** to read the license terms
 
 ### Viewing Extension Logs
 
