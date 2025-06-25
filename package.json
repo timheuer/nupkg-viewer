@@ -24,8 +24,8 @@
       "description": "Current Version"
     },
     {
-      "url": "https://github.com/timheuer/nupkg-viewer/actions/workflows/build.yaml/badge.svg",
-      "href": "https://github.com/timheuer/nupkg-viewer/actions/workflows/build.yaml",
+      "url": "https://github.com/timheuer/nupkg-viewer/actions/workflows/build.yml/badge.svg",
+      "href": "https://github.com/timheuer/nupkg-viewer/actions/workflows/build.yml",
       "description": "Build Status"
     }
   ],
