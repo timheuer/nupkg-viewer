@@ -1,5 +1,9 @@
 # NuGet Package Viewer
 
+[![Install in VS Code](https://img.shields.io/badge/Install%20in-VS%20Code-blue?logo=visualstudiocode&logoColor=white)](vscode://extension/timheuer.nupkg-viewer)
+[![Install in VS Code Insiders](https://img.shields.io/badge/Install%20in-VS%20Code%20Insiders-green?logo=visualstudiocode&logoColor=white)](vscode-insiders://extension/timheuer.nupkg-viewer)
+
+
 A VS Code extension that provides a comprehensive visualization of NuGet packages (.nupkg files). View package metadata, explore contents, and get detailed information similar to nuget.org with an intuitive file explorer interface.
 
 ![2025-06-25_12-23-25](https://github.com/user-attachments/assets/7efa5365-52c2-44d8-a1c2-210446de107f)
