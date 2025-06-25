@@ -1,0 +1,83 @@
+{
+  "name": "nupkg-viewer",
+  "displayName": "NuGet Package Viewer",
+  "description": "Comprehensive visualization of NuGet packages with metadata display, file explorer, and content preview",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.101.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "nuget",
+    "nupkg",
+    "package",
+    "viewer",
+    "visualization",
+    ".net",
+    "dotnet"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "nupkg-viewer.viewPackage",
+        "title": "View NuGet Package",
+        "icon": "$(package)"
+      },
+      {
+        "command": "nupkg-viewer.openPackageViewer",
+        "title": "Open Package Viewer"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "nupkg-viewer.viewPackage",
+          "when": "resourceExtname == .nupkg",
+          "group": "navigation"
+        }
+      ]
+    },
+    "customEditors": [
+      {
+        "viewType": "nupkg-viewer.packageEditor",
+        "displayName": "NuGet Package Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.nupkg"
+          }
+        ],
+        "priority": "default"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.101.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/yauzl": "^2.10.0",
+    "@types/xml2js": "^0.4.0",
+    "@typescript-eslint/eslint-plugin": "^8.28.0",
+    "@typescript-eslint/parser": "^8.28.0",
+    "eslint": "^9.23.0",
+    "typescript": "^5.8.2",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1"
+  },
+  "dependencies": {
+    "yauzl": "^3.0.0",
+    "xml2js": "^0.6.0"
+  }
+}
