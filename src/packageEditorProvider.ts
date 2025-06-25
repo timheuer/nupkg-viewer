@@ -258,12 +258,12 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             <div class="package-id">ID: ${metadata.id}</div>
                             <div class="package-version">Version: ${metadata.version}</div>
                             ${metadata.authors && metadata.authors.length > 0 ? `<div class="package-authors">By: ${metadata.authors.join(', ')}</div>` : ''}
+                            ${this.getLicenseInfoHtml(metadata)}
                             ${metadata.description ? `<div class="package-description">${metadata.description}</div>` : ''}
                         </div>
                         <div class="package-actions">
                             ${metadata.projectUrl ? `<button class="action-btn" onclick="openUrl('${metadata.projectUrl}')">🌐 Project</button>` : ''}
                             ${metadata.repositoryUrl ? `<button class="action-btn" onclick="openUrl('${metadata.repositoryUrl}')">📦 Repository</button>` : ''}
-                            ${metadata.licenseUrl ? `<button class="action-btn" onclick="openUrl('${metadata.licenseUrl}')">📄 License</button>` : ''}
                         </div>
                     </div>
 
@@ -272,6 +272,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                         <div class="tab-headers">
                             ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')">Readme</button>' : ''}
                             <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')">Dependencies</button>
+                            ${packageContent.licenseContent ? '<button class="tab-header" onclick="switchTab(\'license\')">License</button>' : ''}
                             <button class="tab-header" onclick="switchTab('contents')">Contents</button>
                         </div>
 
@@ -298,6 +299,12 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                                 <div class="release-notes">${metadata.releaseNotes}</div>
                                 ` : ''}
                             </div>
+
+                            ${packageContent.licenseContent ? `
+                            <div id="license-tab" class="tab-panel">
+                                ${this.generateLicenseHtml(packageContent.licenseContent, packageContent.licensePath)}
+                            </div>
+                            ` : ''}
 
                             <div id="contents-tab" class="tab-panel">
                                 <div class="contents-header">
@@ -458,10 +465,19 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 font-weight: 600;
             }
 
-            .package-id, .package-version, .package-authors {
-                margin: 5px 0;
+            .package-id, .package-version, .package-authors, .package-license {
                 color: var(--vscode-descriptionForeground);
-                font-size: 14px;
+                font-size: 12px;
+            }
+
+            .package-license a {
+                color: var(--vscode-textLink-foreground);
+                text-decoration: none;
+            }
+
+            .package-license a:hover {
+                color: var(--vscode-textLink-activeForeground);
+                text-decoration: underline;
             }
 
             .package-description {
@@ -591,6 +607,33 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             }
 
             .no-readme {
+                color: var(--vscode-descriptionForeground);
+                font-style: italic;
+                text-align: center;
+                padding: 40px;
+            }
+
+            /* License Styles */
+            .license-content {
+                background-color: var(--vscode-editor-background);
+                border: 1px solid var(--vscode-input-border);
+                border-radius: 4px;
+            }
+
+            .license-header {
+                padding: 15px;
+                background-color: var(--vscode-sideBar-background);
+                border-bottom: 1px solid var(--vscode-input-border);
+                border-radius: 4px 4px 0 0;
+            }
+
+            .license-header h3 {
+                margin: 0;
+                border: none;
+                padding: 0;
+            }
+
+            .no-license {
                 color: var(--vscode-descriptionForeground);
                 font-style: italic;
                 text-align: center;
@@ -1029,6 +1072,30 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 </div>
             `;
         }
+    }
+
+    private getLicenseInfoHtml(metadata: NuGetPackageMetadata): string {
+        if (metadata.license && metadata.licenseType === 'expression') {
+            return `<div class="package-license">License: ${this.escapeHtml(metadata.license)}</div>`;
+        } else if (metadata.licenseUrl) {
+            return `<div class="package-license">License: <a href="${metadata.licenseUrl}" onclick="openUrl('${metadata.licenseUrl}'); return false;">${this.escapeHtml(metadata.licenseUrl)}</a></div>`;
+        }
+        return '';
+    }
+
+    private generateLicenseHtml(licenseContent?: string, licensePath?: string): string {
+        if (!licenseContent) {
+            return '<p class="no-license">No license file found in this package.</p>';
+        }
+
+        return `
+            <div class="license-content">
+                <div class="license-header">
+                    <h3>📄 ${licensePath || 'LICENSE'}</h3>
+                </div>
+                <pre class="text-content">${this.escapeHtml(licenseContent)}</pre>
+            </div>
+        `;
     }
 
     private escapeHtml(text: string): string {

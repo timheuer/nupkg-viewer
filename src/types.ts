@@ -10,6 +10,8 @@ export interface NuGetPackageMetadata {
     authors?: string[];
     owners?: string[];
     licenseUrl?: string;
+    license?: string;
+    licenseType?: 'expression' | 'file';
     projectUrl?: string;
     repositoryUrl?: string;
     repositoryType?: string;
@@ -49,6 +51,8 @@ export interface PackageContent {
     iconData?: Buffer;
     readmeContent?: string;
     readmePath?: string;
+    licenseContent?: string;
+    licensePath?: string;
 }
 
 export interface FileContent {

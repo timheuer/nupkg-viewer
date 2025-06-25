@@ -33,6 +33,8 @@ export class NuGetPackageParser {
                 let metadata: NuGetPackageMetadata | undefined;
                 let readmeContent: string | undefined;
                 let readmePath: string | undefined;
+                let licenseContent: string | undefined;
+                let licensePath: string | undefined;
 
                 zipfile.readEntry();
 
@@ -112,6 +114,26 @@ export class NuGetPackageParser {
                                 zipfile.readEntry();
                             });
                         });
+                    }
+                    // Check if this is a license file
+                    else if (NuGetPackageParser.isLicenseFile(fileName)) {
+                        logInfo(`Found license file: ${fileName}`);
+                        licensePath = fileName;
+                        zipfile.openReadStream(entry, (err, readStream) => {
+                            if (err) {
+                                logError(`Failed to read license file: ${fileName}`, err);
+                                zipfile.readEntry();
+                                return;
+                            }
+
+                            const chunks: Buffer[] = [];
+                            readStream!.on('data', (chunk) => chunks.push(chunk));
+                            readStream!.on('end', () => {
+                                licenseContent = Buffer.concat(chunks).toString('utf8');
+                                logInfo(`License content loaded, length: ${licenseContent.length} characters`);
+                                zipfile.readEntry();
+                            });
+                        });
                     } else {
                         zipfile.readEntry();
                     }
@@ -137,7 +159,9 @@ export class NuGetPackageParser {
                         nuspecContent,
                         iconData,
                         readmeContent,
-                        readmePath
+                        readmePath,
+                        licenseContent,
+                        licensePath
                     };
                     
                     logInfo(`Package parsing completed successfully for: ${packagePath}`);
@@ -275,6 +299,17 @@ export class NuGetPackageParser {
             }
         }
 
+        // Parse license information
+        let license: string | undefined;
+        let licenseType: 'expression' | 'file' | undefined;
+        if (metadata.license && metadata.license[0]) {
+            const licenseNode = metadata.license[0];
+            license = getText(metadata.license);
+            if (licenseNode.$ && licenseNode.$.type) {
+                licenseType = licenseNode.$.type as 'expression' | 'file';
+            }
+        }
+
         const parsedMetadata: NuGetPackageMetadata = {
             id: getText(metadata.id) || '',
             version: getText(metadata.version) || '',
@@ -283,6 +318,8 @@ export class NuGetPackageParser {
             authors: getTextArray(metadata.authors),
             owners: getTextArray(metadata.owners),
             licenseUrl: getText(metadata.licenseUrl),
+            license,
+            licenseType,
             projectUrl: getText(metadata.projectUrl),
             repositoryUrl: metadata.repository?.[0]?.$.url,
             repositoryType: metadata.repository?.[0]?.$.type,
@@ -364,6 +401,12 @@ export class NuGetPackageParser {
         const readmeNames = ['readme.md', 'readme.txt', 'readme.rst', 'readme'];
         const baseName = path.basename(fileName).toLowerCase();
         return readmeNames.includes(baseName) || baseName.startsWith('readme.');
+    }
+
+    private static isLicenseFile(fileName: string): boolean {
+        const licenseNames = ['license', 'license.md', 'license.txt', 'license.rst', 'licence', 'licence.md', 'licence.txt', 'licence.rst', 'copying', 'copying.md', 'copying.txt'];
+        const baseName = path.basename(fileName).toLowerCase();
+        return licenseNames.includes(baseName) || baseName.startsWith('license.') || baseName.startsWith('licence.');
     }
 
     private static getMimeType(filePath: string): string {
