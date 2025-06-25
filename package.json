@@ -79,7 +79,29 @@
         ],
         "priority": "default"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "NuGet Package Viewer",
+      "properties": {
+        "nupkg-viewer.logLevel": {
+          "type": "string",
+          "default": "info",
+          "enum": [
+            "error",
+            "warn", 
+            "info",
+            "verbose"
+          ],
+          "enumDescriptions": [
+            "Only log errors",
+            "Log warnings and errors",
+            "Log info, warnings, and errors",
+            "Log all messages including debug information"
+          ],
+          "description": "Controls the verbosity of logging output in the NuGet Package Viewer output channel"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
