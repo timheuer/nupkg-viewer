@@ -31,6 +31,8 @@ export class NuGetPackageParser {
                 let nuspecContent: string | undefined;
                 let iconData: Buffer | undefined;
                 let metadata: NuGetPackageMetadata | undefined;
+                let readmeContent: string | undefined;
+                let readmePath: string | undefined;
 
                 zipfile.readEntry();
 
@@ -90,6 +92,26 @@ export class NuGetPackageParser {
                                 zipfile.readEntry();
                             });
                         });
+                    }
+                    // Check if this is a readme file
+                    else if (NuGetPackageParser.isReadmeFile(fileName)) {
+                        logInfo(`Found readme file: ${fileName}`);
+                        readmePath = fileName;
+                        zipfile.openReadStream(entry, (err, readStream) => {
+                            if (err) {
+                                logError(`Failed to read readme file: ${fileName}`, err);
+                                zipfile.readEntry();
+                                return;
+                            }
+
+                            const chunks: Buffer[] = [];
+                            readStream!.on('data', (chunk) => chunks.push(chunk));
+                            readStream!.on('end', () => {
+                                readmeContent = Buffer.concat(chunks).toString('utf8');
+                                logInfo(`Readme content loaded, length: ${readmeContent.length} characters`);
+                                zipfile.readEntry();
+                            });
+                        });
                     } else {
                         zipfile.readEntry();
                     }
@@ -113,7 +135,9 @@ export class NuGetPackageParser {
                         metadata,
                         files: fileTree,
                         nuspecContent,
-                        iconData
+                        iconData,
+                        readmeContent,
+                        readmePath
                     };
                     
                     logInfo(`Package parsing completed successfully for: ${packagePath}`);
@@ -334,6 +358,12 @@ export class NuGetPackageParser {
         const iconExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico'];
         const ext = path.extname(fileName).toLowerCase();
         return iconExtensions.includes(ext) && fileName.toLowerCase().includes('icon');
+    }
+
+    private static isReadmeFile(fileName: string): boolean {
+        const readmeNames = ['readme.md', 'readme.txt', 'readme.rst', 'readme'];
+        const baseName = path.basename(fileName).toLowerCase();
+        return readmeNames.includes(baseName) || baseName.startsWith('readme.');
     }
 
     private static getMimeType(filePath: string): string {

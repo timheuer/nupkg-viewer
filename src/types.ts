@@ -47,6 +47,8 @@ export interface PackageContent {
     files: PackageFile[];
     nuspecContent?: string;
     iconData?: Buffer;
+    readmeContent?: string;
+    readmePath?: string;
 }
 
 export interface FileContent {

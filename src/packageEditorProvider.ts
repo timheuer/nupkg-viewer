@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { NuGetPackageParser } from './packageParser';
-import { PackageContent, FileContent } from './types';
+import { PackageContent, FileContent, PackageDependency } from './types';
 import { logInfo, logError, logWarning, logDebug } from './extension';
 
 export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorProvider<vscode.CustomDocument> {
@@ -227,18 +227,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         }
 
         // Generate dependencies HTML
-        const dependenciesHtml = metadata.dependencies && metadata.dependencies.length > 0
-            ? metadata.dependencies.map(dep => `
-                <div class="dependency">
-                    <strong>${dep.id}</strong>
-                    ${dep.version ? `<span class="version">${dep.version}</span>` : ''}
-                    ${dep.targetFramework ? `<span class="framework">${dep.targetFramework}</span>` : ''}
-                </div>
-            `).join('')
-            : '<p class="no-deps">No dependencies</p>';
+        const dependenciesHtml = this.generateDependenciesHtml(metadata.dependencies);
 
         // Generate file tree HTML
         const fileTreeHtml = this.generateFileTreeHtml(packageContent.files);
+
+        // Generate readme HTML
+        const readmeHtml = this.generateReadmeHtml(packageContent.readmeContent, packageContent.readmePath);
 
         return `
             <!DOCTYPE html>
@@ -263,6 +258,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             <div class="package-id">ID: ${metadata.id}</div>
                             <div class="package-version">Version: ${metadata.version}</div>
                             ${metadata.authors && metadata.authors.length > 0 ? `<div class="package-authors">By: ${metadata.authors.join(', ')}</div>` : ''}
+                            ${metadata.description ? `<div class="package-description">${metadata.description}</div>` : ''}
                         </div>
                         <div class="package-actions">
                             ${metadata.projectUrl ? `<button class="action-btn" onclick="openUrl('${metadata.projectUrl}')">🌐 Project</button>` : ''}
@@ -271,44 +267,39 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                         </div>
                     </div>
 
-                    <!-- Package Content -->
-                    <div class="package-content">
-                        <!-- Left Panel: Package Info -->
-                        <div class="left-panel">
-                            ${metadata.description ? `
-                            <div class="section">
-                                <h3>Description</h3>
-                                <p class="description">${metadata.description}</p>
+                    <!-- Tabbed Content -->
+                    <div class="tabbed-content">
+                        <div class="tab-headers">
+                            ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')">Readme</button>' : ''}
+                            <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')">Dependencies</button>
+                            <button class="tab-header" onclick="switchTab('contents')">Contents</button>
+                        </div>
+
+                        <div class="tab-content">
+                            ${packageContent.readmeContent ? `
+                            <div id="readme-tab" class="tab-panel${packageContent.readmeContent ? ' active' : ''}">
+                                ${readmeHtml}
                             </div>
                             ` : ''}
 
-                            <div class="section">
+                            <div id="dependencies-tab" class="tab-panel${!packageContent.readmeContent ? ' active' : ''}">
                                 <h3>Dependencies</h3>
-                                <div class="dependencies">
-                                    ${dependenciesHtml}
-                                </div>
-                            </div>
-
-                            ${metadata.tags && metadata.tags.length > 0 ? `
-                            <div class="section">
+                                ${dependenciesHtml}
+                                
+                                ${metadata.tags && metadata.tags.length > 0 ? `
                                 <h3>Tags</h3>
                                 <div class="tags">
                                     ${metadata.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                                 </div>
-                            </div>
-                            ` : ''}
+                                ` : ''}
 
-                            ${metadata.releaseNotes ? `
-                            <div class="section">
+                                ${metadata.releaseNotes ? `
                                 <h3>Release Notes</h3>
                                 <div class="release-notes">${metadata.releaseNotes}</div>
+                                ` : ''}
                             </div>
-                            ` : ''}
-                        </div>
 
-                        <!-- Right Panel: File Explorer -->
-                        <div class="right-panel">
-                            <div class="section">
+                            <div id="contents-tab" class="tab-panel">
                                 <h3>Package Contents</h3>
                                 <div class="file-explorer">
                                     ${fileTreeHtml}
@@ -341,25 +332,59 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
 
     private generateFileTreeHtml(files: any[], level: number = 0): string {
         return files.map(file => {
-            const indent = '  '.repeat(level);
+            const indent = level * 20;
             if (file.isDirectory) {
+                const folderId = `folder-${file.path.replace(/[^a-zA-Z0-9]/g, '-')}`;
                 return `
-                    <div class="folder" style="margin-left: ${level * 20}px;">
-                        <span class="folder-icon">📁</span>
-                        <span class="folder-name">${file.name}</span>
-                        ${file.children ? this.generateFileTreeHtml(file.children, level + 1) : ''}
+                    <div class="folder-container">
+                        <div class="folder" style="margin-left: ${indent}px;" onclick="toggleFolder('${folderId}')">
+                            <span class="folder-toggle">▶</span>
+                            <span class="folder-icon">📁</span>
+                            <span class="folder-name">${file.name}</span>
+                        </div>
+                        <div id="${folderId}" class="folder-children" style="display: none;">
+                            ${file.children ? this.generateFileTreeHtml(file.children, level + 1) : ''}
+                        </div>
                     </div>
                 `;
             } else {
+                const fileIcon = this.getFileIcon(file.name);
                 return `
-                    <div class="file" style="margin-left: ${level * 20}px;" onclick="openFile('${file.path}')">
-                        <span class="file-icon">📄</span>
+                    <div class="file" style="margin-left: ${indent}px;" onclick="openFile('${file.path}')" title="${file.path}">
+                        <span class="file-icon">${fileIcon}</span>
                         <span class="file-name">${file.name}</span>
                         <span class="file-size">(${this.formatFileSize(file.size)})</span>
                     </div>
                 `;
             }
         }).join('');
+    }
+
+    private getFileIcon(fileName: string): string {
+        const ext = path.extname(fileName).toLowerCase();
+        const iconMap: { [key: string]: string } = {
+            '.cs': '📝',
+            '.vb': '📝',
+            '.fs': '📝',
+            '.js': '📄',
+            '.ts': '📄',
+            '.json': '📄',
+            '.xml': '📄',
+            '.config': '⚙️',
+            '.dll': '📚',
+            '.exe': '⚙️',
+            '.pdb': '🔍',
+            '.txt': '📄',
+            '.md': '📖',
+            '.yml': '📄',
+            '.yaml': '📄',
+            '.png': '🖼️',
+            '.jpg': '🖼️',
+            '.jpeg': '🖼️',
+            '.gif': '🖼️',
+            '.ico': '🖼️'
+        };
+        return iconMap[ext] || '📄';
     }
 
     private formatFileSize(bytes: number): string {
@@ -430,6 +455,14 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             .package-id, .package-version, .package-authors {
                 margin: 5px 0;
                 color: var(--vscode-descriptionForeground);
+                font-size: 14px;
+            }
+
+            .package-description {
+                margin: 10px 0 0 0;
+                color: var(--vscode-editor-foreground);
+                font-size: 14px;
+                line-height: 1.5;
             }
 
             .package-actions {
@@ -453,24 +486,61 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 background-color: var(--vscode-button-hoverBackground);
             }
 
-            .package-content {
-                display: grid;
-                grid-template-columns: 1fr 1fr;
-                gap: 20px;
-            }
-
-            .left-panel, .right-panel {
+            /* Tabbed Interface */
+            .tabbed-content {
                 background-color: var(--vscode-sideBar-background);
                 border-radius: 8px;
-                padding: 20px;
                 border: 1px solid var(--vscode-sideBar-border);
             }
 
-            .section {
-                margin-bottom: 20px;
+            .tab-headers {
+                display: flex;
+                background-color: var(--vscode-tab-inactiveBackground);
+                border-radius: 8px 8px 0 0;
+                border-bottom: 1px solid var(--vscode-sideBar-border);
             }
 
-            .section h3 {
+            .tab-header {
+                padding: 12px 20px;
+                background: none;
+                border: none;
+                color: var(--vscode-tab-inactiveForeground);
+                cursor: pointer;
+                font-size: 14px;
+                font-weight: 500;
+                transition: all 0.2s;
+                border-radius: 8px 8px 0 0;
+            }
+
+            .tab-header:first-child {
+                border-radius: 8px 0 0 0;
+            }
+
+            .tab-header.active {
+                background-color: var(--vscode-tab-activeBackground);
+                color: var(--vscode-tab-activeForeground);
+                border-bottom: 2px solid var(--vscode-tab-activeBorder);
+            }
+
+            .tab-header:hover:not(.active) {
+                background-color: var(--vscode-tab-hoverBackground);
+                color: var(--vscode-tab-hoverForeground);
+            }
+
+            .tab-content {
+                padding: 20px;
+            }
+
+            .tab-panel {
+                display: none;
+            }
+
+            .tab-panel.active {
+                display: block;
+            }
+
+            /* Tab Panel Content */
+            .tab-panel h3 {
                 margin: 0 0 15px 0;
                 font-size: 18px;
                 font-weight: 600;
@@ -478,38 +548,92 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 padding-bottom: 5px;
             }
 
-            .description {
-                line-height: 1.6;
+            /* Readme Styles */
+            .readme-content {
+                background-color: var(--vscode-editor-background);
+                border: 1px solid var(--vscode-input-border);
+                border-radius: 4px;
             }
 
+            .readme-header {
+                padding: 15px;
+                background-color: var(--vscode-sideBar-background);
+                border-bottom: 1px solid var(--vscode-input-border);
+                border-radius: 4px 4px 0 0;
+            }
+
+            .readme-header h3 {
+                margin: 0 0 5px 0;
+                border: none;
+                padding: 0;
+            }
+
+            .readme-header small {
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .markdown-content, .text-content {
+                margin: 0;
+                padding: 15px;
+                background-color: var(--vscode-editor-background);
+                color: var(--vscode-editor-foreground);
+                font-family: var(--vscode-editor-font-family);
+                font-size: var(--vscode-editor-font-size);
+                overflow-x: auto;
+                white-space: pre-wrap;
+                border-radius: 0 0 4px 4px;
+            }
+
+            .no-readme {
+                color: var(--vscode-descriptionForeground);
+                font-style: italic;
+                text-align: center;
+                padding: 40px;
+            }
+
+            /* Dependencies Styles */
             .dependencies {
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
+                margin-bottom: 20px;
             }
 
             .dependency {
-                padding: 10px;
+                padding: 12px;
                 background-color: var(--vscode-editor-background);
                 border-radius: 4px;
                 border: 1px solid var(--vscode-input-border);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .dependency strong {
+                color: var(--vscode-editor-foreground);
             }
 
             .dependency .version, .dependency .framework {
-                margin-left: 10px;
                 color: var(--vscode-descriptionForeground);
                 font-size: 12px;
+                background-color: var(--vscode-badge-background);
+                color: var(--vscode-badge-foreground);
+                padding: 2px 6px;
+                border-radius: 3px;
             }
 
             .no-deps {
                 color: var(--vscode-descriptionForeground);
                 font-style: italic;
+                text-align: center;
+                padding: 20px;
             }
 
             .tags {
                 display: flex;
                 flex-wrap: wrap;
                 gap: 8px;
+                margin-bottom: 20px;
             }
 
             .tag {
@@ -523,43 +647,72 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             .release-notes {
                 white-space: pre-wrap;
                 background-color: var(--vscode-editor-background);
-                padding: 10px;
+                padding: 15px;
                 border-radius: 4px;
                 border: 1px solid var(--vscode-input-border);
+                margin-bottom: 20px;
             }
 
+            /* File Explorer Styles */
             .file-explorer {
                 background-color: var(--vscode-editor-background);
                 border: 1px solid var(--vscode-input-border);
                 border-radius: 4px;
                 padding: 10px;
-                max-height: 400px;
+                max-height: 600px;
                 overflow-y: auto;
             }
 
+            .folder-container {
+                margin-bottom: 2px;
+            }
+
             .folder, .file {
-                padding: 4px 8px;
+                padding: 6px 8px;
                 cursor: pointer;
                 border-radius: 4px;
                 transition: background-color 0.2s;
                 display: flex;
                 align-items: center;
                 gap: 8px;
+                margin-bottom: 1px;
             }
 
-            .file:hover {
+            .folder:hover, .file:hover {
                 background-color: var(--vscode-list-hoverBackground);
+            }
+
+            .folder-toggle {
+                width: 12px;
+                text-align: center;
+                font-size: 10px;
+                transition: transform 0.2s;
+                user-select: none;
+            }
+
+            .folder-toggle.expanded {
+                transform: rotate(90deg);
             }
 
             .folder-icon, .file-icon {
                 width: 16px;
                 text-align: center;
+                font-size: 14px;
+            }
+
+            .folder-name, .file-name {
+                flex: 1;
+                font-size: 14px;
             }
 
             .file-size {
-                margin-left: auto;
                 color: var(--vscode-descriptionForeground);
                 font-size: 12px;
+                margin-left: auto;
+            }
+
+            .folder-children {
+                margin-left: 8px;
             }
 
             /* Modal Styles */
@@ -599,6 +752,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
 
             .modal-header h3 {
                 margin: 0;
+                border: none;
+                padding: 0;
             }
 
             .close {
@@ -633,13 +788,21 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             }
 
             @media (max-width: 768px) {
-                .package-content {
-                    grid-template-columns: 1fr;
-                }
-                
                 .package-header {
                     flex-direction: column;
                     text-align: center;
+                }
+                
+                .tab-headers {
+                    flex-direction: column;
+                }
+                
+                .tab-header {
+                    border-radius: 0;
+                }
+                
+                .tab-header:first-child {
+                    border-radius: 8px 8px 0 0;
                 }
                 
                 .modal-content {
@@ -670,6 +833,47 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
 
             function closeModal() {
                 document.getElementById('fileModal').style.display = 'none';
+            }
+
+            function switchTab(tabName) {
+                // Hide all tab panels
+                const panels = document.querySelectorAll('.tab-panel');
+                panels.forEach(panel => panel.classList.remove('active'));
+                
+                // Remove active class from all tab headers
+                const headers = document.querySelectorAll('.tab-header');
+                headers.forEach(header => header.classList.remove('active'));
+                
+                // Show the selected tab panel
+                const targetPanel = document.getElementById(tabName + '-tab');
+                if (targetPanel) {
+                    targetPanel.classList.add('active');
+                }
+                
+                // Add active class to the clicked tab header
+                const clickedHeader = Array.from(headers).find(header => 
+                    header.getAttribute('onclick').includes(tabName)
+                );
+                if (clickedHeader) {
+                    clickedHeader.classList.add('active');
+                }
+            }
+
+            function toggleFolder(folderId) {
+                const folderElement = document.getElementById(folderId);
+                const toggleElement = document.querySelector('[onclick="toggleFolder(\\'' + folderId + '\\')"] .folder-toggle');
+                
+                if (folderElement && toggleElement) {
+                    if (folderElement.style.display === 'none') {
+                        folderElement.style.display = 'block';
+                        toggleElement.textContent = '▼';
+                        toggleElement.classList.add('expanded');
+                    } else {
+                        folderElement.style.display = 'none';
+                        toggleElement.textContent = '▶';
+                        toggleElement.classList.remove('expanded');
+                    }
+                }
             }
 
             // Handle messages from extension
@@ -717,6 +921,73 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     closeModal();
                 }
             });
+
+            // Initialize - expand root folders by default
+            document.addEventListener('DOMContentLoaded', function() {
+                const rootFolders = document.querySelectorAll('.folder-container:nth-child(-n+3) .folder');
+                rootFolders.forEach(folder => {
+                    const onclick = folder.getAttribute('onclick');
+                    if (onclick) {
+                        const folderId = onclick.match(/toggleFolder\\('([^']+)'\\)/)[1];
+                        if (folderId) {
+                            toggleFolder(folderId);
+                        }
+                    }
+                });
+            });
         `;
+    }
+
+    private generateDependenciesHtml(dependencies?: PackageDependency[]): string {
+        if (!dependencies || dependencies.length === 0) {
+            return '<p class="no-deps">No dependencies</p>';
+        }
+
+        return dependencies.map(dep => `
+            <div class="dependency">
+                <strong>${dep.id}</strong>
+                ${dep.version ? `<span class="version">${dep.version}</span>` : ''}
+                ${dep.targetFramework ? `<span class="framework">${dep.targetFramework}</span>` : ''}
+            </div>
+        `).join('');
+    }
+
+    private generateReadmeHtml(readmeContent?: string, readmePath?: string): string {
+        if (!readmeContent) {
+            return '<p class="no-readme">No readme file found in this package.</p>';
+        }
+
+        // Check if it's markdown
+        if (readmePath && readmePath.toLowerCase().endsWith('.md')) {
+            // For now, we'll display as plain text but wrapped in a code block
+            // In a future version, we could add a markdown parser
+            return `
+                <div class="readme-content">
+                    <div class="readme-header">
+                        <h3>📄 ${readmePath}</h3>
+                        <small>Markdown content (displaying as plain text)</small>
+                    </div>
+                    <pre class="markdown-content">${this.escapeHtml(readmeContent)}</pre>
+                </div>
+            `;
+        } else {
+            return `
+                <div class="readme-content">
+                    <div class="readme-header">
+                        <h3>📄 ${readmePath || 'README'}</h3>
+                    </div>
+                    <pre class="text-content">${this.escapeHtml(readmeContent)}</pre>
+                </div>
+            `;
+        }
+    }
+
+    private escapeHtml(text: string): string {
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 }
