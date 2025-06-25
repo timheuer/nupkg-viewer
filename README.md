@@ -81,19 +81,6 @@ This extension doesn't require any specific settings configuration. It works out
 - Binary files in the package are not previewable (by design)
 - Some older .nupkg formats may not parse completely
 
-## 📝 Release Notes
-
-### 0.0.1
-
-Initial release of NuGet Package Viewer with the following features:
-- Complete package metadata display
-- Interactive file tree explorer
-- File content preview
-- External link integration
-- Modern VS Code-integrated UI
-
----
-
 ## 🛠️ Development
 
 ### Building from Source
@@ -109,11 +96,6 @@ npm run compile
 2. Press `F5` to launch the Extension Development Host
 3. Open a `.nupkg` file to test the extension
 
-### Testing
-```bash
-npm run test
-```
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit issues and enhancement requests.
@@ -125,24 +107,3 @@ See LICENSE file for details.
 ---
 
 **Enjoy exploring your NuGet packages with style! 📦✨**
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
