@@ -466,9 +466,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             }
 
             .package-id, .package-version, .package-authors, .package-license {
-                margin: 5px 0;
                 color: var(--vscode-descriptionForeground);
-                font-size: 14px;
+                font-size: 12px;
             }
 
             .package-license a {
