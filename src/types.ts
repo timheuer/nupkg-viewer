@@ -26,6 +26,12 @@ export interface NuGetPackageMetadata {
     serviceable?: boolean;
     requireLicenseAcceptance?: boolean;
     minClientVersion?: string;
+    packageTypes?: PackageType[];
+}
+
+export interface PackageType {
+    name: string;
+    version?: string;
 }
 
 export interface PackageDependency {

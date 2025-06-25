@@ -1,7 +1,7 @@
 import * as yauzl from 'yauzl';
 import * as xml2js from 'xml2js';
 import * as path from 'path';
-import { NuGetPackageMetadata, PackageContent, PackageFile, PackageDependency, FileContent } from './types';
+import { NuGetPackageMetadata, PackageContent, PackageFile, PackageDependency, FileContent, PackageType } from './types';
 import { logInfo, logError, logWarning, logDebug, logTrace } from './extension';
 
 export class NuGetPackageParser {
@@ -310,6 +310,17 @@ export class NuGetPackageParser {
             }
         }
 
+        // Parse package types
+        const packageTypes: PackageType[] = [];
+        if (metadata.packageTypes && metadata.packageTypes[0] && metadata.packageTypes[0].packageType) {
+            for (const packageType of metadata.packageTypes[0].packageType) {
+                packageTypes.push({
+                    name: packageType.$.name || '',
+                    version: packageType.$.version
+                });
+            }
+        }
+
         const parsedMetadata: NuGetPackageMetadata = {
             id: getText(metadata.id) || '',
             version: getText(metadata.version) || '',
@@ -331,7 +342,8 @@ export class NuGetPackageParser {
             dependencies,
             language: getText(metadata.language),
             developmentDependency: getText(metadata.developmentDependency) === 'true',
-            serviceable: getText(metadata.serviceable) === 'true'
+            serviceable: getText(metadata.serviceable) === 'true',
+            packageTypes
         };
 
         logInfo(`Parsed metadata for package: ${parsedMetadata.id} v${parsedMetadata.version}`);

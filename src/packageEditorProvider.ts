@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { NuGetPackageParser } from './packageParser';
-import { PackageContent, FileContent, PackageDependency, NuGetPackageMetadata } from './types';
+import { PackageContent, FileContent, PackageDependency, NuGetPackageMetadata, PackageType } from './types';
 import { logInfo, logError, logWarning, logDebug, logTrace } from './extension';
 
 export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorProvider<vscode.CustomDocument> {
@@ -91,6 +91,10 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                                 vscode.env.openExternal(vscode.Uri.parse(message.url));
                             }
                             break;
+                        case 'installTemplate':
+                            logTrace(`Request to install template: ${document.uri.fsPath}`);
+                            await this.handleInstallTemplate(document.uri.fsPath);
+                            break;
                         default:
                             logWarning(`Unknown message type received: ${message.type}`);
                     }
@@ -130,6 +134,33 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 message: errorMessage
             });
         }
+    }
+
+    private async handleInstallTemplate(packagePath: string): Promise<void> {
+        logTrace(`handleInstallTemplate called for package: ${packagePath}`);
+        try {
+            // Reuse an existing terminal if one with this name exists
+            const terminalName = 'NuGet Template Installer';
+            let terminal = vscode.window.terminals.find(t => t.name === terminalName);
+            if (!terminal) {
+                terminal = vscode.window.createTerminal(terminalName);
+            }
+            terminal.show();
+            
+            // Run dotnet new install command in the terminal
+            const command = `dotnet new install "${packagePath}"`;
+            terminal.sendText(command);
+            
+            logTrace(`Template installation command sent to terminal for: ${packagePath}`);
+        } catch (error) {
+            const errorMessage = `Failed to install template: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            logError(`handleInstallTemplate error for ${packagePath}`, error instanceof Error ? error : undefined);
+            vscode.window.showErrorMessage(errorMessage);
+        }
+    }
+
+    private isTemplatePackage(metadata: NuGetPackageMetadata): boolean {
+        return metadata.packageTypes?.some(pt => pt.name === 'Template') || false;
     }
 
     private getLoadingHtml(): string {
@@ -262,6 +293,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             ${metadata.description ? `<div class="package-description">${metadata.description}</div>` : ''}
                         </div>
                         <div class="package-actions">
+                            ${this.isTemplatePackage(metadata) ? `<button class="action-btn template-btn" onclick="installTemplate()"><span class="codicon codicon-file-submodule"></span> Install Template</button>` : ''}
                             ${metadata.projectUrl ? `<button class="action-btn" onclick="openUrl('${metadata.projectUrl}')"><span class="codicon codicon-globe"></span> Project</button>` : ''}
                             ${metadata.repositoryUrl ? `<button class="action-btn" onclick="openUrl('${metadata.repositoryUrl}')"><span class="codicon codicon-repo"></span> Repository</button>` : ''}
                         </div>
@@ -286,6 +318,17 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             <div id="dependencies-tab" class="tab-panel${!packageContent.readmeContent ? ' active' : ''}">
                                 <h3>Dependencies</h3>
                                 ${dependenciesHtml}
+                                
+                                ${this.isTemplatePackage(metadata) ? `
+                                <h3>Package Type</h3>
+                                <div class="package-type-info">
+                                    <div class="package-type-badge">
+                                        <span class="codicon codicon-file-submodule"></span>
+                                        Template Package
+                                    </div>
+                                    <p>This is a .NET template package that can be installed using the "Install Template" button above.</p>
+                                </div>
+                                ` : ''}
                                 
                                 ${metadata.tags && metadata.tags.length > 0 ? `
                                 <h3>Tags</h3>
@@ -443,6 +486,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             .codicon-package:before { content: "\\eb29"; }
             .codicon-globe:before { content: "\\eb01"; }
             .codicon-repo:before { content: "\\ea62"; }
+            .codicon-cloud-download:before { content: "\\eaeb"; }
+            .codicon-file-submodule:before { content: "\\eafc"; }
             .codicon-expand-all:before { content: "\\eb95"; }
             .codicon-collapse-all:before { content: "\\eac5"; }
             .codicon-close:before { content: "\\ea76"; }
@@ -569,6 +614,16 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
 
             .action-btn:hover {
                 background-color: var(--vscode-button-hoverBackground);
+            }
+
+            .template-btn {
+                background-color: var(--vscode-button-secondaryBackground);
+                color: var(--vscode-button-secondaryForeground);
+                border: 1px solid var(--vscode-button-border);
+            }
+
+            .template-btn:hover {
+                background-color: var(--vscode-button-secondaryHoverBackground);
             }
 
             /* Tabbed Interface */
@@ -775,6 +830,30 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 color: var(--vscode-badge-foreground);
                 border-radius: 12px;
                 font-size: 12px;
+            }
+
+            .package-type-info {
+                background-color: var(--vscode-editor-background);
+                border: 1px solid var(--vscode-input-border);
+                border-radius: 4px;
+                padding: 15px;
+                margin-bottom: 20px;
+            }
+
+            .package-type-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                background-color: var(--vscode-badge-background);
+                color: var(--vscode-badge-foreground);
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-weight: 500;
+                margin-bottom: 10px;
+            }
+
+            .package-type-badge .codicon {
+                font-size: 16px;
             }
 
             .release-notes {
@@ -1013,6 +1092,12 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 vscode.postMessage({
                     type: 'openFile',
                     filePath: filePath
+                });
+            }
+
+            function installTemplate() {
+                vscode.postMessage({
+                    type: 'installTemplate'
                 });
             }
 
