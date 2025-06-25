@@ -9,7 +9,7 @@ let outputChannel: vscode.OutputChannel;
 
 export function getOutputChannel(): vscode.OutputChannel {
 	if (!outputChannel) {
-		outputChannel = vscode.window.createOutputChannel('NuGet Package Viewer');
+		outputChannel = vscode.window.createOutputChannel('NuGet Package Viewer', { log: true });
 	}
 	return outputChannel;
 }
@@ -17,25 +17,25 @@ export function getOutputChannel(): vscode.OutputChannel {
 // Logging utility functions
 export function logInfo(message: string): void {
 	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[INFO ${timestamp}] ${message}`);
+	getOutputChannel().appendLine(`${message}`);
 }
 
 export function logError(message: string, error?: Error): void {
 	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[ERROR ${timestamp}] ${message}`);
+	getOutputChannel().appendLine(`${message}`);
 	if (error) {
-		getOutputChannel().appendLine(`[ERROR ${timestamp}] ${error.stack || error.message}`);
+		getOutputChannel().appendLine(`${error.stack || error.message}`);
 	}
 }
 
 export function logWarning(message: string): void {
 	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[WARNING ${timestamp}] ${message}`);
+	getOutputChannel().appendLine(`${message}`);
 }
 
 export function logDebug(message: string): void {
 	const timestamp = new Date().toISOString();
-	getOutputChannel().appendLine(`[DEBUG ${timestamp}] ${message}`);
+	getOutputChannel().appendLine(`${message}`);
 }
 
 // This method is called when your extension is activated
@@ -112,10 +112,6 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(viewPackageCommand);
 		context.subscriptions.push(openPackageViewerCommand);
 		logInfo('All commands registered successfully');
-
-		// Show a welcome message
-		logInfo('Showing welcome message');
-		vscode.window.showInformationMessage('NuGet Package Viewer is ready! Right-click on any .nupkg file to view it.');
 		
 		logInfo('Extension activation completed successfully');
 	} catch (error) {
