@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { NuGetPackageParser } from './packageParser';
-import { PackageContent, FileContent, PackageDependency } from './types';
+import { PackageContent, FileContent, PackageDependency, NuGetPackageMetadata } from './types';
 import { logInfo, logError, logWarning, logDebug, logTrace } from './extension';
 
 export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorProvider<vscode.CustomDocument> {
@@ -243,7 +243,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>${metadata.id} - NuGet Package Viewer</title>
                 <style>
-                    ${this.getPackageViewerStyles()}
+                    ${this.getPackageViewerStyles(webview)}
                 </style>
             </head>
             <body>
@@ -251,7 +251,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     <!-- Package Header -->
                     <div class="package-header">
                         <div class="package-icon">
-                            ${iconDataUrl ? `<img src="${iconDataUrl}" alt="Package Icon" />` : '<div class="default-icon">📦</div>'}
+                            ${iconDataUrl ? `<img src="${iconDataUrl}" alt="Package Icon" />` : '<div class="default-icon"><span class="codicon codicon-package"></span></div>'}
                         </div>
                         <div class="package-info">
                             <h1 class="package-title">${metadata.title || metadata.id}</h1>
@@ -262,8 +262,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             ${metadata.description ? `<div class="package-description">${metadata.description}</div>` : ''}
                         </div>
                         <div class="package-actions">
-                            ${metadata.projectUrl ? `<button class="action-btn" onclick="openUrl('${metadata.projectUrl}')">🌐 Project</button>` : ''}
-                            ${metadata.repositoryUrl ? `<button class="action-btn" onclick="openUrl('${metadata.repositoryUrl}')">📦 Repository</button>` : ''}
+                            ${metadata.projectUrl ? `<button class="action-btn" onclick="openUrl('${metadata.projectUrl}')"><span class="codicon codicon-globe"></span> Project</button>` : ''}
+                            ${metadata.repositoryUrl ? `<button class="action-btn" onclick="openUrl('${metadata.repositoryUrl}')"><span class="codicon codicon-repo"></span> Repository</button>` : ''}
                         </div>
                     </div>
 
@@ -310,8 +310,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                                 <div class="contents-header">
                                     <h3>Package Contents</h3>
                                     <div class="tree-controls">
-                                        <button class="tree-btn" onclick="expandAllFolders()" title="Expand All">📂 Expand All</button>
-                                        <button class="tree-btn" onclick="collapseAllFolders()" title="Collapse All">📁 Collapse All</button>
+                                        <button class="tree-btn" onclick="expandAllFolders()" title="Expand All"><span class="codicon codicon-expand-all"></span> Expand All</button>
+                                        <button class="tree-btn" onclick="collapseAllFolders()" title="Collapse All"><span class="codicon codicon-collapse-all"></span> Collapse All</button>
                                     </div>
                                 </div>
                                 <div class="file-explorer">
@@ -326,7 +326,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h3 id="modalTitle">File Viewer</h3>
-                                <span class="close" onclick="closeModal()">&times;</span>
+                                <span class="close codicon codicon-close" onclick="closeModal()"></span>
                             </div>
                             <div class="modal-body">
                                 <pre id="fileContent"></pre>
@@ -351,8 +351,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 return `
                     <div class="folder-container">
                         <div class="folder" style="margin-left: ${indent}px;" onclick="toggleFolder('${folderId}')">
-                            <span class="folder-toggle">▶</span>
-                            <span class="folder-icon">📁</span>
+                            <span class="folder-toggle codicon codicon-chevron-right"></span>
+                            <span class="folder-icon codicon codicon-folder"></span>
                             <span class="folder-name">${file.name}</span>
                         </div>
                         <div id="${folderId}" class="folder-children" style="display: none;">
@@ -364,7 +364,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 const fileIcon = this.getFileIcon(file.name);
                 return `
                     <div class="file" style="margin-left: ${indent}px;" onclick="openFile('${file.path}')" title="${file.path}">
-                        <span class="file-icon">${fileIcon}</span>
+                        <span class="file-icon codicon ${fileIcon}"></span>
                         <span class="file-name">${file.name}</span>
                         <span class="file-size">(${this.formatFileSize(file.size)})</span>
                     </div>
@@ -376,28 +376,28 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
     private getFileIcon(fileName: string): string {
         const ext = path.extname(fileName).toLowerCase();
         const iconMap: { [key: string]: string } = {
-            '.cs': '📝',
-            '.vb': '📝',
-            '.fs': '📝',
-            '.js': '📄',
-            '.ts': '📄',
-            '.json': '📄',
-            '.xml': '📄',
-            '.config': '⚙️',
-            '.dll': '📚',
-            '.exe': '⚙️',
-            '.pdb': '🔍',
-            '.txt': '📄',
-            '.md': '📖',
-            '.yml': '📄',
-            '.yaml': '📄',
-            '.png': '🖼️',
-            '.jpg': '🖼️',
-            '.jpeg': '🖼️',
-            '.gif': '🖼️',
-            '.ico': '🖼️'
+            '.cs': 'codicon-file-code',
+            '.vb': 'codicon-file-code',
+            '.fs': 'codicon-file-code',
+            '.js': 'codicon-file-code',
+            '.ts': 'codicon-file-code',
+            '.json': 'codicon-file-code',
+            '.xml': 'codicon-file-code',
+            '.config': 'codicon-settings-gear',
+            '.dll': 'codicon-library',
+            '.exe': 'codicon-gear',
+            '.pdb': 'codicon-debug',
+            '.txt': 'codicon-file-text',
+            '.md': 'codicon-markdown',
+            '.yml': 'codicon-file-code',
+            '.yaml': 'codicon-file-code',
+            '.png': 'codicon-file-media',
+            '.jpg': 'codicon-file-media',
+            '.jpeg': 'codicon-file-media',
+            '.gif': 'codicon-file-media',
+            '.ico': 'codicon-file-media'
         };
-        return iconMap[ext] || '📄';
+        return iconMap[ext] || 'codicon-file';
     }
 
     private formatFileSize(bytes: number): string {
@@ -410,8 +410,17 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
     }
 
-    private getPackageViewerStyles(): string {
+    private getPackageViewerStyles(webview: vscode.Webview): string {
+        // Get the codicon CSS URI for the webview
+        const codiconCssUri = vscode.Uri.file(
+            path.join(this.context.extensionPath, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+        );
+        const codiconCssWebviewUri = webview.asWebviewUri(codiconCssUri);
+        
         return `
+            /* Import Codicons */
+            @import url('${codiconCssWebviewUri.toString()}');
+
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 margin: 0;
@@ -450,9 +459,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 40px;
                 background-color: var(--vscode-button-background);
                 border-radius: 8px;
+            }
+
+            .default-icon .codicon {
+                font-size: 40px;
+                color: var(--vscode-button-foreground);
             }
 
             .package-info {
@@ -502,6 +515,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 cursor: pointer;
                 font-size: 14px;
                 transition: background-color 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .action-btn .codicon {
+                font-size: 16px;
             }
 
             .action-btn:hover {
@@ -588,6 +608,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 margin: 0 0 5px 0;
                 border: none;
                 padding: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .readme-header h3 .codicon {
+                font-size: 18px;
             }
 
             .readme-header small {
@@ -631,6 +658,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 margin: 0;
                 border: none;
                 padding: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .license-header h3 .codicon {
+                font-size: 18px;
             }
 
             .no-license {
@@ -737,6 +771,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 cursor: pointer;
                 font-size: 12px;
                 transition: background-color 0.2s;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+
+            .tree-btn .codicon {
+                font-size: 14px;
             }
 
             .tree-btn:hover {
@@ -763,11 +804,14 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             }
 
             .folder-toggle {
-                width: 12px;
+                width: 16px;
+                height: 16px;
                 text-align: center;
-                font-size: 10px;
                 transition: transform 0.2s;
                 user-select: none;
+                display: flex;
+                align-items: center;
+                justify-content: center;
             }
 
             .folder-toggle.expanded {
@@ -776,8 +820,15 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
 
             .folder-icon, .file-icon {
                 width: 16px;
+                height: 16px;
                 text-align: center;
-                font-size: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .folder-icon .codicon, .file-icon .codicon {
+                font-size: 16px;
             }
 
             .folder-name, .file-name {
@@ -838,10 +889,14 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
 
             .close {
                 color: var(--vscode-descriptionForeground);
-                font-size: 28px;
-                font-weight: bold;
                 cursor: pointer;
                 line-height: 1;
+                font-size: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 24px;
+                height: 24px;
             }
 
             .close:hover {
@@ -946,11 +1001,9 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 if (folderElement && toggleElement) {
                     if (folderElement.style.display === 'none') {
                         folderElement.style.display = 'block';
-                        toggleElement.textContent = '▼';
                         toggleElement.classList.add('expanded');
                     } else {
                         folderElement.style.display = 'none';
-                        toggleElement.textContent = '▶';
                         toggleElement.classList.remove('expanded');
                     }
                 }
@@ -1056,7 +1109,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             return `
                 <div class="readme-content">
                     <div class="readme-header">
-                        <h3>📄 ${readmePath}</h3>
+                        <h3><span class="codicon codicon-markdown"></span> ${readmePath}</h3>
                         <small>Markdown content (displaying as plain text)</small>
                     </div>
                     <pre class="markdown-content">${this.escapeHtml(readmeContent)}</pre>
@@ -1066,7 +1119,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             return `
                 <div class="readme-content">
                     <div class="readme-header">
-                        <h3>📄 ${readmePath || 'README'}</h3>
+                        <h3><span class="codicon codicon-file-text"></span> ${readmePath || 'README'}</h3>
                     </div>
                     <pre class="text-content">${this.escapeHtml(readmeContent)}</pre>
                 </div>
@@ -1091,7 +1144,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         return `
             <div class="license-content">
                 <div class="license-header">
-                    <h3>📄 ${licensePath || 'LICENSE'}</h3>
+                    <h3><span class="codicon codicon-law"></span> ${licensePath || 'LICENSE'}</h3>
                 </div>
                 <pre class="text-content">${this.escapeHtml(licenseContent)}</pre>
             </div>
