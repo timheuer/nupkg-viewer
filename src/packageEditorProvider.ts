@@ -300,7 +300,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             </div>
 
                             <div id="contents-tab" class="tab-panel">
-                                <h3>Package Contents</h3>
+                                <div class="contents-header">
+                                    <h3>Package Contents</h3>
+                                    <div class="tree-controls">
+                                        <button class="tree-btn" onclick="expandAllFolders()" title="Expand All">📂 Expand All</button>
+                                        <button class="tree-btn" onclick="collapseAllFolders()" title="Collapse All">📁 Collapse All</button>
+                                    </div>
+                                </div>
                                 <div class="file-explorer">
                                     ${fileTreeHtml}
                                 </div>
@@ -663,6 +669,37 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 overflow-y: auto;
             }
 
+            .contents-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 15px;
+            }
+
+            .contents-header h3 {
+                margin: 0;
+            }
+
+            .tree-controls {
+                display: flex;
+                gap: 8px;
+            }
+
+            .tree-btn {
+                padding: 6px 12px;
+                background-color: var(--vscode-button-secondaryBackground);
+                color: var(--vscode-button-secondaryForeground);
+                border: 1px solid var(--vscode-button-border);
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: background-color 0.2s;
+            }
+
+            .tree-btn:hover {
+                background-color: var(--vscode-button-secondaryHoverBackground);
+            }
+
             .folder-container {
                 margin-bottom: 2px;
             }
@@ -876,6 +913,30 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 }
             }
 
+            function expandAllFolders() {
+                const allFolders = document.querySelectorAll('.folder-children');
+                allFolders.forEach(folder => {
+                    if (folder.style.display === 'none') {
+                        const folderId = folder.id;
+                        if (folderId) {
+                            toggleFolder(folderId);
+                        }
+                    }
+                });
+            }
+
+            function collapseAllFolders() {
+                const allFolders = document.querySelectorAll('.folder-children');
+                allFolders.forEach(folder => {
+                    if (folder.style.display !== 'none') {
+                        const folderId = folder.id;
+                        if (folderId) {
+                            toggleFolder(folderId);
+                        }
+                    }
+                });
+            }
+
             // Handle messages from extension
             window.addEventListener('message', event => {
                 const message = event.data;
@@ -922,19 +983,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 }
             });
 
-            // Initialize - expand root folders by default
-            document.addEventListener('DOMContentLoaded', function() {
-                const rootFolders = document.querySelectorAll('.folder-container:nth-child(-n+3) .folder');
-                rootFolders.forEach(folder => {
-                    const onclick = folder.getAttribute('onclick');
-                    if (onclick) {
-                        const folderId = onclick.match(/toggleFolder\\('([^']+)'\\)/)[1];
-                        if (folderId) {
-                            toggleFolder(folderId);
-                        }
-                    }
-                });
-            });
+            // Initialize - all folders start collapsed by default
         `;
     }
 
