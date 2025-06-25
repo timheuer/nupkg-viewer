@@ -270,10 +270,10 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     <!-- Tabbed Content -->
                     <div class="tabbed-content">
                         <div class="tab-headers">
-                            ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')">Readme</button>' : ''}
-                            <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')">Dependencies</button>
-                            ${packageContent.licenseContent ? '<button class="tab-header" onclick="switchTab(\'license\')">License</button>' : ''}
-                            <button class="tab-header" onclick="switchTab('contents')">Contents</button>
+                            ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')"><span class="codicon codicon-note"></span> Readme</button>' : ''}
+                            <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')"><span class="codicon codicon-link"></span> Dependencies</button>
+                            ${packageContent.licenseContent ? '<button class="tab-header" onclick="switchTab(\'license\')"><span class="codicon codicon-law"></span> License</button>' : ''}
+                            <button class="tab-header" onclick="switchTab('contents')"><span class="codicon codicon-book"></span> Contents</button>
                         </div>
 
                         <div class="tab-content">
@@ -381,7 +381,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             '.fs': 'codicon-file-code',
             '.js': 'codicon-file-code',
             '.ts': 'codicon-file-code',
-            '.json': 'codicon-file-code',
+            '.json': 'codicon-json',
             '.xml': 'codicon-file-code',
             '.config': 'codicon-settings-gear',
             '.dll': 'codicon-library',
@@ -411,15 +411,58 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
     }
 
     private getPackageViewerStyles(webview: vscode.Webview): string {
-        // Get the codicon CSS URI for the webview
-        const codiconCssUri = vscode.Uri.file(
-            path.join(this.context.extensionPath, 'node_modules', '@vscode', 'codicons', 'dist', 'codicon.css')
+        // Get the codicon font URI for the webview from our local media directory
+        const codiconFontUri = vscode.Uri.file(
+            path.join(this.context.extensionPath, 'media', 'codicons', 'codicon.ttf')
         );
-        const codiconCssWebviewUri = webview.asWebviewUri(codiconCssUri);
+        const codiconFontWebviewUri = webview.asWebviewUri(codiconFontUri);
         
         return `
-            /* Import Codicons */
-            @import url('${codiconCssWebviewUri.toString()}');
+            /* Codicon Font Face */
+            @font-face {
+                font-family: "codicon";
+                font-display: block;
+                src: url("${codiconFontWebviewUri.toString()}") format("truetype");
+            }
+
+            /* Codicon Base Class */
+            .codicon {
+                font: normal normal normal 16px/1 codicon;
+                display: inline-block;
+                text-decoration: none;
+                text-rendering: auto;
+                text-align: center;
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                user-select: none;
+                -webkit-user-select: none;
+                -ms-user-select: none;
+            }
+
+            /* Common Codicon Classes */
+            .codicon-package:before { content: "\\eb29"; }
+            .codicon-globe:before { content: "\\eb01"; }
+            .codicon-repo:before { content: "\\ea62"; }
+            .codicon-expand-all:before { content: "\\eb95"; }
+            .codicon-collapse-all:before { content: "\\eac5"; }
+            .codicon-close:before { content: "\\ea76"; }
+            .codicon-chevron-right:before { content: "\\eab6"; }
+            .codicon-chevron-down:before { content: "\eab4" }
+            .codicon-folder:before { content: "\\eb46"; }
+            .codicon-file:before { content: "\\eb60"; }
+            .codicon-file-code:before { content: "\\eae9"; }
+            .codicon-file-text:before { content: "\\ea7b"; }
+            .codicon-file-media:before { content: "\\eaea"; }
+            .codicon-markdown:before { content: "\\eb1d"; }
+            .codicon-settings-gear:before { content: "\\eb51"; }
+            .codicon-library:before { content: "\\eb9c"; }
+            .codicon-gear:before { content: "\\eaf8"; }
+            .codicon-debug:before { content: "\\ead8"; }
+            .codicon-law:before { content: "\\eb12"; }
+            .codicon-link:before { content: "\\eb15"; }
+            .codicon-note:before { content: "\\eb26"; }
+            .codicon-book:before { content: "\\eaa4"; }
+            .codicon-json:before { content: "\\eb0f" }
 
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -552,6 +595,13 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 font-weight: 500;
                 transition: all 0.2s;
                 border-radius: 8px 8px 0 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .tab-header .codicon {
+                font-size: 16px;
             }
 
             .tab-header:first-child {

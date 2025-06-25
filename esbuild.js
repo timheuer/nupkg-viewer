@@ -1,7 +1,40 @@
 const esbuild = require('esbuild');
+const fs = require('fs');
+const path = require('path');
 
 const production = process.argv.includes('--production');
 const watch = process.argv.includes('--watch');
+
+/**
+ * Plugin to copy Codicon assets to media directory
+ * @type {import('esbuild').Plugin}
+ */
+const copyCodiconAssetsPlugin = {
+  name: 'copy-codicon-assets',
+  setup(build) {
+    build.onStart(() => {
+      // Ensure media/codicons directory exists
+      const codiconsDir = path.join(__dirname, 'media', 'codicons');
+      if (!fs.existsSync(codiconsDir)) {
+        fs.mkdirSync(codiconsDir, { recursive: true });
+      }
+
+      // Copy codicon.ttf from node_modules (we inline the CSS)
+      const sourceDir = path.join(__dirname, 'node_modules', '@vscode', 'codicons', 'dist');
+      const filesToCopy = ['codicon.ttf'];
+      
+      filesToCopy.forEach(file => {
+        const sourcePath = path.join(sourceDir, file);
+        const destPath = path.join(codiconsDir, file);
+        
+        if (fs.existsSync(sourcePath)) {
+          fs.copyFileSync(sourcePath, destPath);
+          console.log(`[codicons] Copied ${file} to media/codicons/`);
+        }
+      });
+    });
+  },
+};
 
 /**
  * @type {import('esbuild').Plugin}
@@ -37,6 +70,7 @@ async function main() {
     logLevel: 'silent',
     plugins: [
       /* add to the end of plugins array */
+      copyCodiconAssetsPlugin,
       esbuildProblemMatcherPlugin,
     ],
     // Define NODE_ENV for production builds
