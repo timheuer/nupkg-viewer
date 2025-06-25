@@ -2,7 +2,33 @@
   "name": "nupkg-viewer",
   "displayName": "NuGet Package Viewer",
   "description": "Comprehensive visualization of NuGet packages with metadata display, file explorer, and content preview",
-  "version": "0.0.1",
+  "version": "0.0.0-placeholder",
+  "author": {
+    "name": "Tim Heuer"
+  },
+  "publisher": "timheuer",
+  "icon": "images/icon.png",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timheuer/nupkg-viewer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/timheuer/nupkg-viewer/issues"
+  },
+  "qna": "https://github.com/timheuer/nupkg-viewer/issues",
+  "badges": [
+    {
+      "url": "https://img.shields.io/visual-studio-marketplace/v/timheuer.nupkg-viewer?label=VS%20Code%20Marketplace&color=brightgreen&logo=visualstudiocode",
+      "href": "https://marketplace.visualstudio.com/items?itemName=TimHeuer.nupkg-viewer",
+      "description": "Current Version"
+    },
+    {
+      "url": "https://github.com/timheuer/nupkg-viewer/actions/workflows/build.yaml/badge.svg",
+      "href": "https://github.com/timheuer/nupkg-viewer/actions/workflows/build.yaml",
+      "description": "Build Status"
+    }
+  ],
   "engines": {
     "vscode": "^1.101.0"
   },
@@ -61,7 +87,11 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "vscode-test",
+    "build": "tsc -p ./",
+    "package": "npm run build && vsce package",
+    "deploy": "vsce publish"
+
   },
   "devDependencies": {
     "@types/vscode": "^1.101.0",

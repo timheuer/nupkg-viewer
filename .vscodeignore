@@ -15,3 +15,5 @@ node_modules/**
 sample-data/**
 version.json
 .devcontainer/**
+.vscode-test.mjs
+eslint.config.mjs
