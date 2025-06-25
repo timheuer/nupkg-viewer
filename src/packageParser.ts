@@ -2,7 +2,7 @@ import * as yauzl from 'yauzl';
 import * as xml2js from 'xml2js';
 import * as path from 'path';
 import { NuGetPackageMetadata, PackageContent, PackageFile, PackageDependency, FileContent } from './types';
-import { logInfo, logError, logWarning, logDebug } from './extension';
+import { logInfo, logError, logWarning, logDebug, logTrace } from './extension';
 
 export class NuGetPackageParser {
     
@@ -40,7 +40,7 @@ export class NuGetPackageParser {
 
                 zipfile.on('entry', (entry) => {
                     const fileName = entry.fileName;
-                    logDebug(`Processing entry: ${fileName}`);
+                    logTrace(`Processing entry: ${fileName}`);
                     
                     // Create file entry
                     const file: PackageFile = {
@@ -78,7 +78,7 @@ export class NuGetPackageParser {
                     } 
                     // Check if this is an icon file
                     else if (NuGetPackageParser.isIconFile(fileName)) {
-                        logInfo(`Found icon file: ${fileName}`);
+                        logTrace(`Found icon file: ${fileName}`);
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
                                 logError(`Failed to read icon file: ${fileName}`, err);
@@ -97,7 +97,7 @@ export class NuGetPackageParser {
                     }
                     // Check if this is a readme file
                     else if (NuGetPackageParser.isReadmeFile(fileName)) {
-                        logInfo(`Found readme file: ${fileName}`);
+                        logTrace(`Found readme file: ${fileName}`);
                         readmePath = fileName;
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
@@ -148,10 +148,10 @@ export class NuGetPackageParser {
                         return;
                     }
 
-                    logInfo('Building file tree structure...');
+                    logTrace('Building file tree structure...');
                     // Build file tree structure
                     const fileTree = NuGetPackageParser.buildFileTree(files);
-                    logInfo(`File tree built successfully with ${fileTree.length} top-level entries`);
+                    logTrace(`File tree built successfully with ${fileTree.length} top-level entries`);
 
                     const result: PackageContent = {
                         metadata,
@@ -180,7 +180,7 @@ export class NuGetPackageParser {
      * Get the content of a specific file from the package
      */
     public static async getFileContent(packagePath: string, filePath: string): Promise<FileContent> {
-        logInfo(`Getting file content for: ${filePath} from package: ${packagePath}`);
+        logTrace(`Getting file content for: ${filePath} from package: ${packagePath}`);
         return new Promise((resolve, reject) => {
             yauzl.open(packagePath, { lazyEntries: true }, (err, zipfile) => {
                 if (err) {
@@ -200,7 +200,7 @@ export class NuGetPackageParser {
 
                 zipfile.on('entry', (entry) => {
                     if (entry.fileName === filePath) {
-                        logInfo(`Found target file in package: ${filePath}`);
+                        logTrace(`Found target file in package: ${filePath}`);
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
                                 logError(`Failed to open read stream for file: ${filePath}`, err);
@@ -213,7 +213,7 @@ export class NuGetPackageParser {
                             readStream!.on('end', () => {
                                 const content = Buffer.concat(chunks);
                                 const mimeType = NuGetPackageParser.getMimeType(filePath);
-                                logInfo(`File content retrieved successfully: ${filePath}, size: ${content.length} bytes, type: ${mimeType}`);
+                                logTrace(`File content retrieved successfully: ${filePath}, size: ${content.length} bytes, type: ${mimeType}`);
                                 
                                 resolve({
                                     path: filePath,
@@ -242,7 +242,7 @@ export class NuGetPackageParser {
     }
 
     private static async parseNuspec(nuspecContent: string): Promise<NuGetPackageMetadata> {
-        logInfo('Parsing .nuspec content...');
+        logTrace('Parsing .nuspec content...');
         const parser = new xml2js.Parser();
         const result = await parser.parseStringPromise(nuspecContent);
         
@@ -339,7 +339,7 @@ export class NuGetPackageParser {
     }
 
     private static buildFileTree(files: PackageFile[]): PackageFile[] {
-        logDebug('Building file tree structure...');
+        logTrace('Building file tree structure...');
         const tree: PackageFile[] = [];
         const pathMap = new Map<string, PackageFile>();
 
@@ -387,7 +387,7 @@ export class NuGetPackageParser {
             }
         }
 
-        logDebug(`Built file tree with ${tree.length} top-level entries`);
+        logTrace(`Built file tree with ${tree.length} top-level entries`);
         return tree;
     }
 
