@@ -161,8 +161,32 @@ export function activate(context: vscode.ExtensionContext) {
 			await vscode.commands.executeCommand('nupkg-viewer.viewPackage');
 		});
 
+		const decorationProvider = vscode.window.registerFileDecorationProvider({
+			provideFileDecoration: (uri: vscode.Uri) => {
+				logTrace(`Checking file decoration for: ${uri.fsPath}`);
+				if (uri.fsPath.endsWith('.nupkg')) {
+					logTrace(`Applying decoration to .nupkg file: ${uri.fsPath}`);
+					return {
+						badge: '📦',
+						color: new vscode.ThemeColor('editorInfo.foreground'),
+						tooltip: 'NuGet Package'
+					};
+				}
+				return undefined;
+			}
+		});
+
+		vscode.workspace.getConfiguration().update(
+			'workbench.editorAssociations',
+			{
+				'*.nupkg': 'nupkg-viewer.packageEditor'
+			},
+			vscode.ConfigurationTarget.Global
+		);
+
 		context.subscriptions.push(viewPackageCommand);
 		context.subscriptions.push(openPackageViewerCommand);
+		context.subscriptions.push(decorationProvider);
 		logTrace('All commands registered successfully');
 
 		logTrace('Extension activation completed successfully');

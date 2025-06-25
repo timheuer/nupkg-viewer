@@ -51,12 +51,13 @@
     "commands": [
       {
         "command": "nupkg-viewer.viewPackage",
-        "title": "View NuGet Package",
+        "title": "NuGet: View Package",
         "icon": "$(package)"
       },
       {
         "command": "nupkg-viewer.openPackageViewer",
-        "title": "Open Package Viewer"
+        "title": "NuGet: Open Package",
+        "icon": "$(package)"
       }
     ],
     "menus": {
