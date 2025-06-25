@@ -138,25 +138,46 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
 
     private async handleInstallTemplate(packagePath: string): Promise<void> {
         logTrace(`handleInstallTemplate called for package: ${packagePath}`);
-        try {
-            // Reuse an existing terminal if one with this name exists
-            const terminalName = 'NuGet Template Installer';
-            let terminal = vscode.window.terminals.find(t => t.name === terminalName);
-            if (!terminal) {
-                terminal = vscode.window.createTerminal(terminalName);
+        
+        await vscode.window.withProgress({
+            location: vscode.ProgressLocation.Notification,
+            title: "Installing Template",
+            cancellable: true
+        }, async (progress, token) => {
+            try {
+                // Show indeterminate progress
+                progress.report({ message: "Preparing terminal..." });
+                
+                // Reuse an existing terminal if one with this name exists
+                const terminalName = 'NuGet Template Installer';
+                let terminal = vscode.window.terminals.find(t => t.name === terminalName);
+                if (!terminal) {
+                    terminal = vscode.window.createTerminal(terminalName);
+                }
+                terminal.show();
+                
+                progress.report({ message: "Executing dotnet new install..." });
+                
+                // Run dotnet new install command in the terminal
+                const command = `dotnet new install "${packagePath}"`;
+                terminal.sendText(command);
+                
+                logTrace(`Template installation command sent to terminal for: ${packagePath}`);
+                
+                progress.report({ message: "Installing template package..." });
+                
+                // Check if cancelled
+                if (token.isCancellationRequested) {
+                    logTrace('Template installation was cancelled');
+                    return;
+                }
+                
+            } catch (error) {
+                const errorMessage = `Failed to install template: ${error instanceof Error ? error.message : 'Unknown error'}`;
+                logError(`handleInstallTemplate error for ${packagePath}`, error instanceof Error ? error : undefined);
+                vscode.window.showErrorMessage(errorMessage);
             }
-            terminal.show();
-            
-            // Run dotnet new install command in the terminal
-            const command = `dotnet new install "${packagePath}"`;
-            terminal.sendText(command);
-            
-            logTrace(`Template installation command sent to terminal for: ${packagePath}`);
-        } catch (error) {
-            const errorMessage = `Failed to install template: ${error instanceof Error ? error.message : 'Unknown error'}`;
-            logError(`handleInstallTemplate error for ${packagePath}`, error instanceof Error ? error : undefined);
-            vscode.window.showErrorMessage(errorMessage);
-        }
+        });
     }
 
     private isTemplatePackage(metadata: NuGetPackageMetadata): boolean {
