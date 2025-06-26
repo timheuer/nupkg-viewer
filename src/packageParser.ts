@@ -144,6 +144,8 @@ export class NuGetPackageParser {
                     if (!metadata) {
                         const error = new Error('No .nuspec file found or failed to parse metadata');
                         logError('Package parsing failed: No metadata found');
+                        // Close the ZIP file before rejecting
+                        zipfile.close();
                         reject(error);
                         return;
                     }
@@ -165,11 +167,15 @@ export class NuGetPackageParser {
                     };
                     
                     logInfo(`Package parsing completed successfully for: ${packagePath}`);
+                    // Close the ZIP file before resolving
+                    zipfile.close();
                     resolve(result);
                 });
 
                 zipfile.on('error', (error) => {
                     logError(`Zipfile error while parsing package: ${packagePath}`, error);
+                    // Close the ZIP file on error
+                    zipfile.close();
                     reject(error);
                 });
             });
@@ -204,6 +210,8 @@ export class NuGetPackageParser {
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
                                 logError(`Failed to open read stream for file: ${filePath}`, err);
+                                // Close the ZIP file before rejecting
+                                zipfile.close();
                                 reject(err);
                                 return;
                             }
@@ -215,11 +223,19 @@ export class NuGetPackageParser {
                                 const mimeType = NuGetPackageParser.getMimeType(filePath);
                                 logTrace(`File content retrieved successfully: ${filePath}, size: ${content.length} bytes, type: ${mimeType}`);
                                 
+                                // Close the ZIP file before resolving
+                                zipfile.close();
                                 resolve({
                                     path: filePath,
                                     content,
                                     mimeType
                                 });
+                            });
+                            
+                            readStream!.on('error', (streamErr) => {
+                                logError(`Error reading stream for file: ${filePath}`, streamErr);
+                                zipfile.close();
+                                reject(streamErr);
                             });
                         });
                         return;
@@ -230,11 +246,15 @@ export class NuGetPackageParser {
                 zipfile.on('end', () => {
                     const error = new Error(`File not found: ${filePath}`);
                     logError(`File not found in package: ${filePath}`);
+                    // Close the ZIP file before rejecting
+                    zipfile.close();
                     reject(error);
                 });
 
                 zipfile.on('error', (error) => {
                     logError(`Zipfile error while getting file content from: ${packagePath}`, error);
+                    // Close the ZIP file on error
+                    zipfile.close();
                     reject(error);
                 });
             });

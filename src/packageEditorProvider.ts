@@ -6,7 +6,10 @@ import { logInfo, logError, logWarning, logDebug, logTrace } from './extension';
 
 export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorProvider<vscode.CustomDocument> {
     
-    public static register(context: vscode.ExtensionContext): vscode.Disposable {
+    // Track active documents and their resources
+    private activeDocuments = new Map<string, { document: vscode.CustomDocument; disposables: vscode.Disposable[] }>();
+    
+    public static register(context: vscode.ExtensionContext): { registration: vscode.Disposable; provider: NuGetPackageEditorProvider } {
         logTrace('Creating NuGetPackageEditorProvider instance...');
         const provider = new NuGetPackageEditorProvider(context);
         logTrace(`Registering custom editor provider with viewType: ${NuGetPackageEditorProvider.viewType}`);
@@ -22,7 +25,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             }
         );
         logTrace('Custom editor provider registration completed');
-        return providerRegistration;
+        return { registration: providerRegistration, provider };
     }
 
     private static readonly viewType = 'nupkg-viewer.packageEditor';
@@ -31,18 +34,56 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         logTrace('NuGetPackageEditorProvider constructor called');
     }
 
+    /**
+     * Clean up all tracked resources - call this during extension deactivation
+     */
+    public dispose(): void {
+        logTrace('Disposing NuGetPackageEditorProvider and cleaning up all resources...');
+        for (const [uri, tracked] of this.activeDocuments) {
+            logTrace(`Cleaning up resources for document: ${uri}`);
+            tracked.disposables.forEach(disposable => {
+                try {
+                    disposable.dispose();
+                } catch (error) {
+                    logError(`Error disposing resource for document ${uri}`, error instanceof Error ? error : undefined);
+                }
+            });
+        }
+        this.activeDocuments.clear();
+        logTrace('All resources cleaned up');
+    }
+
     async openCustomDocument(
         uri: vscode.Uri,
         openContext: vscode.CustomDocumentOpenContext,
         _token: vscode.CancellationToken
     ): Promise<vscode.CustomDocument> {
         logTrace(`openCustomDocument called for URI: ${uri.toString()}`);
-        return {
+        
+        const document = {
             uri,
             dispose: () => {
                 logTrace(`Custom document disposed for: ${uri.toString()}`);
+                // Clean up any tracked resources for this document
+                const tracked = this.activeDocuments.get(uri.toString());
+                if (tracked) {
+                    tracked.disposables.forEach(disposable => {
+                        try {
+                            disposable.dispose();
+                        } catch (error) {
+                            logError(`Error disposing resource for document ${uri.toString()}`, error instanceof Error ? error : undefined);
+                        }
+                    });
+                    this.activeDocuments.delete(uri.toString());
+                    logTrace(`Cleaned up ${tracked.disposables.length} disposables for document: ${uri.toString()}`);
+                }
             }
         };
+        
+        // Track this document
+        this.activeDocuments.set(uri.toString(), { document, disposables: [] });
+        
+        return document;
     }
 
     async resolveCustomEditor(
@@ -77,7 +118,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             logTrace('Webview HTML updated successfully');
 
             // Handle messages from the webview
-            webviewPanel.webview.onDidReceiveMessage(
+            const messageDisposable = webviewPanel.webview.onDidReceiveMessage(
                 async (message) => {
                     logTrace(`Received message from webview: ${JSON.stringify(message)}`);
                     switch (message.type) {
@@ -98,11 +139,26 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                         default:
                             logWarning(`Unknown message type received: ${message.type}`);
                     }
-                },
-                undefined,
-                this.context.subscriptions
+                }
             );
-            logTrace('Message handler registered');
+            
+            // Track the message handler for cleanup
+            const tracked = this.activeDocuments.get(document.uri.toString());
+            if (tracked) {
+                tracked.disposables.push(messageDisposable);
+            }
+            
+            // Also handle webview disposal
+            const webviewDisposable = webviewPanel.onDidDispose(() => {
+                logTrace(`Webview panel disposed for document: ${document.uri.toString()}`);
+                // The document dispose will handle cleanup
+            });
+            
+            if (tracked) {
+                tracked.disposables.push(webviewDisposable);
+            }
+            
+            logTrace('Message handler and disposal tracking registered');
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

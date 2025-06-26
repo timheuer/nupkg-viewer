@@ -6,6 +6,7 @@ import { NuGetPackageParser } from './packageParser';
 
 // Global output channel for logging
 let outputChannel: vscode.LogOutputChannel;
+let packageEditorProvider: NuGetPackageEditorProvider | undefined;
 
 // Log level constants
 export enum LogLevel {
@@ -103,12 +104,14 @@ export function activate(context: vscode.ExtensionContext) {
 	console.log('Congratulations, your extension "nupkg-viewer" is now active!');
 	logTrace('Extension activation started');
 
-	try {
-		// Register the custom editor provider for .nupkg files
-		logTrace('Registering custom editor provider...');
-		const editorProvider = NuGetPackageEditorProvider.register(context);
-		context.subscriptions.push(editorProvider);
-		logTrace('Custom editor provider registered successfully');
+	try {        // Register the custom editor provider for .nupkg files
+        logTrace('Registering custom editor provider...');
+        const { registration: editorProviderRegistration, provider } = NuGetPackageEditorProvider.register(context);
+        context.subscriptions.push(editorProviderRegistration);
+        
+        // Store reference to the provider for cleanup
+        packageEditorProvider = provider;
+        logTrace('Custom editor provider registered successfully');
 
 		// Register the view package command
 		logTrace('Registering viewPackage command...');
@@ -199,6 +202,13 @@ export function activate(context: vscode.ExtensionContext) {
 // This method is called when your extension is deactivated
 export function deactivate() {
 	logTrace('Extension "nupkg-viewer" is deactivating...');
+	
+	// Clean up the package editor provider
+	if (packageEditorProvider) {
+		packageEditorProvider.dispose();
+		packageEditorProvider = undefined;
+	}
+	
 	if (outputChannel) {
 		outputChannel.dispose();
 	}
