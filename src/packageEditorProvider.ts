@@ -196,7 +196,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         logTrace(`handleInstallTemplate called for package: ${packagePath}`);
         
         await vscode.window.withProgress({
-            location: vscode.ProgressLocation.Notification,
+            location: vscode.ProgressLocation.Window,
             title: "Installing Template",
             cancellable: true
         }, async (progress, token) => {
