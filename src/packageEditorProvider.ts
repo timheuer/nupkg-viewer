@@ -1134,6 +1134,14 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     text-align: center;
                 }
                 
+                .package-actions {
+                    flex-direction: row;
+                    justify-content: flex-end;
+                    align-self: flex-end;
+                    width: 100%;
+                    padding: 10px 0;
+                }
+                
                 .tab-headers {
                     flex-direction: column;
                 }
