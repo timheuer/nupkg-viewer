@@ -379,10 +379,10 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     <!-- Tabbed Content -->
                     <div class="tabbed-content">
                         <div class="tab-headers">
-                            ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')"><span class="codicon codicon-note"></span> Readme</button>' : ''}
-                            <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')"><span class="codicon codicon-link"></span> Dependencies</button>
-                            ${packageContent.licenseContent ? '<button class="tab-header" onclick="switchTab(\'license\')"><span class="codicon codicon-law"></span> License</button>' : ''}
-                            <button class="tab-header" onclick="switchTab('contents')"><span class="codicon codicon-book"></span> Contents</button>
+                            ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')" title="Readme"><span class="codicon codicon-note"></span><span class="tab-text"> Readme</span></button>' : ''}
+                            <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')" title="Dependencies"><span class="codicon codicon-link"></span><span class="tab-text"> Dependencies</span></button>
+                            ${packageContent.licenseContent ? '<button class="tab-header" onclick="switchTab(\'license\')" title="License"><span class="codicon codicon-law"></span><span class="tab-text"> License</span></button>' : ''}
+                            <button class="tab-header" onclick="switchTab('contents')" title="Contents"><span class="codicon codicon-book"></span><span class="tab-text"> Contents</span></button>
                         </div>
 
                         <div class="tab-content">
@@ -1142,16 +1142,14 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     padding: 10px 0;
                 }
                 
-                .tab-headers {
-                    flex-direction: column;
-                }
-                
                 .tab-header {
-                    border-radius: 0;
+                    padding: 12px 8px;
+                    min-width: 44px;
+                    justify-content: center;
                 }
                 
-                .tab-header:first-child {
-                    border-radius: 8px 8px 0 0;
+                .tab-header .tab-text {
+                    display: none;
                 }
                 
                 .modal-content {
