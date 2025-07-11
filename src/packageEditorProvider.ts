@@ -240,6 +240,10 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         return metadata.packageTypes?.some(pt => pt.name === 'Template') || false;
     }
 
+    private isMcpServerPackage(metadata: NuGetPackageMetadata): boolean {
+        return metadata.packageTypes?.some(pt => pt.name === 'McpServer') || false;
+    }
+
     private getLoadingHtml(): string {
         return `
             <!DOCTYPE html>
@@ -382,6 +386,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')" title="Readme"><span class="codicon codicon-note"></span><span class="tab-text"> Readme</span></button>' : ''}
                             <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')" title="Dependencies"><span class="codicon codicon-link"></span><span class="tab-text"> Dependencies</span></button>
                             ${packageContent.licenseContent ? '<button class="tab-header" onclick="switchTab(\'license\')" title="License"><span class="codicon codicon-law"></span><span class="tab-text"> License</span></button>' : ''}
+                            ${this.isMcpServerPackage(metadata) && packageContent.mcpServerContent ? '<button class="tab-header" onclick="switchTab(\'mcpserver\')" title="MCP Server"><span class="codicon codicon-mcp"></span><span class="tab-text"> MCP Server</span></button>' : ''}
                             <button class="tab-header" onclick="switchTab('contents')" title="Contents"><span class="codicon codicon-book"></span><span class="tab-text"> Contents</span></button>
                         </div>
 
@@ -423,6 +428,12 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             ${packageContent.licenseContent ? `
                             <div id="license-tab" class="tab-panel">
                                 ${this.generateLicenseHtml(packageContent.licenseContent, packageContent.licensePath)}
+                            </div>
+                            ` : ''}
+
+                            ${this.isMcpServerPackage(metadata) && packageContent.mcpServerContent ? `
+                            <div id="mcpserver-tab" class="tab-panel">
+                                ${this.generateMcpServerHtml(packageContent.mcpServerContent, packageContent.mcpServerPath)}
                             </div>
                             ` : ''}
 
@@ -585,6 +596,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             .codicon-note:before { content: "\\eb26"; }
             .codicon-book:before { content: "\\eaa4"; }
             .codicon-json:before { content: "\\eb0f" }
+            .codicon-server:before { content: "\\eb50"; }
+            .codicon-mcp:before { content: "\\ec47"; }
 
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -850,6 +863,56 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             }
 
             .no-license {
+                color: var(--vscode-descriptionForeground);
+                font-style: italic;
+                text-align: center;
+                padding: 40px;
+            }
+
+            /* MCP Server Styles */
+            .mcpserver-content {
+                background-color: var(--vscode-editor-background);
+                border: 1px solid var(--vscode-input-border);
+                border-radius: 4px;
+            }
+
+            .mcpserver-header {
+                padding: 15px;
+                background-color: var(--vscode-sideBar-background);
+                border-bottom: 1px solid var(--vscode-input-border);
+                border-radius: 4px 4px 0 0;
+            }
+
+            .mcpserver-header h3 {
+                margin: 0 0 5px 0;
+                border: none;
+                padding: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .mcpserver-header h3 .codicon {
+                font-size: 18px;
+            }
+
+            .mcpserver-header small {
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .json-content {
+                margin: 0;
+                padding: 15px;
+                background-color: var(--vscode-editor-background);
+                color: var(--vscode-editor-foreground);
+                font-family: var(--vscode-editor-font-family);
+                font-size: var(--vscode-editor-font-size);
+                overflow-x: auto;
+                white-space: pre-wrap;
+                border-radius: 0 0 4px 4px;
+            }
+
+            .no-mcpserver {
                 color: var(--vscode-descriptionForeground);
                 font-style: italic;
                 text-align: center;
@@ -1365,6 +1428,32 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     <h3><span class="codicon codicon-law"></span> ${licensePath || 'LICENSE'}</h3>
                 </div>
                 <pre class="text-content">${this.escapeHtml(licenseContent)}</pre>
+            </div>
+        `;
+    }
+
+    private generateMcpServerHtml(mcpServerContent?: string, mcpServerPath?: string): string {
+        if (!mcpServerContent) {
+            return '<p class="no-mcpserver">No MCP server configuration found in this package.</p>';
+        }
+
+        // Try to format the JSON for better readability
+        let formattedContent = mcpServerContent;
+        try {
+            const jsonObj = JSON.parse(mcpServerContent);
+            formattedContent = JSON.stringify(jsonObj, null, 2);
+        } catch (e) {
+            // If parsing fails, just use the original content
+            formattedContent = mcpServerContent;
+        }
+
+        return `
+            <div class="mcpserver-content">
+                <div class="mcpserver-header">
+                    <h3><span class="codicon codicon-mcp"></span> ${mcpServerPath || 'MCP Server Configuration'}</h3>
+                    <small>Model Context Protocol Server Configuration</small>
+                </div>
+                <pre class="json-content">${this.escapeHtml(formattedContent)}</pre>
             </div>
         `;
     }
