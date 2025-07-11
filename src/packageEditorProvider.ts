@@ -386,7 +386,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             ${packageContent.readmeContent ? '<button class="tab-header active" onclick="switchTab(\'readme\')" title="Readme"><span class="codicon codicon-note"></span><span class="tab-text"> Readme</span></button>' : ''}
                             <button class="tab-header${!packageContent.readmeContent ? ' active' : ''}" onclick="switchTab('dependencies')" title="Dependencies"><span class="codicon codicon-link"></span><span class="tab-text"> Dependencies</span></button>
                             ${packageContent.licenseContent ? '<button class="tab-header" onclick="switchTab(\'license\')" title="License"><span class="codicon codicon-law"></span><span class="tab-text"> License</span></button>' : ''}
-                            ${this.isMcpServerPackage(metadata) && packageContent.mcpServerContent ? '<button class="tab-header" onclick="switchTab(\'mcpserver\')" title="MCP Server"><span class="codicon codicon-server"></span><span class="tab-text"> MCP Server</span></button>' : ''}
+                            ${this.isMcpServerPackage(metadata) && packageContent.mcpServerContent ? '<button class="tab-header" onclick="switchTab(\'mcpserver\')" title="MCP Server"><span class="codicon codicon-mcp"></span><span class="tab-text"> MCP Server</span></button>' : ''}
                             <button class="tab-header" onclick="switchTab('contents')" title="Contents"><span class="codicon codicon-book"></span><span class="tab-text"> Contents</span></button>
                         </div>
 
@@ -597,6 +597,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             .codicon-book:before { content: "\\eaa4"; }
             .codicon-json:before { content: "\\eb0f" }
             .codicon-server:before { content: "\\eb50"; }
+            .codicon-mcp:before { content: "\\ec47"; }
 
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -1449,7 +1450,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         return `
             <div class="mcpserver-content">
                 <div class="mcpserver-header">
-                    <h3><span class="codicon codicon-server"></span> ${mcpServerPath || 'MCP Server Configuration'}</h3>
+                    <h3><span class="codicon codicon-mcp"></span> ${mcpServerPath || 'MCP Server Configuration'}</h3>
                     <small>Model Context Protocol Server Configuration</small>
                 </div>
                 <pre class="json-content">${this.escapeHtml(formattedContent)}</pre>
