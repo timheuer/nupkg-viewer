@@ -59,6 +59,8 @@ export interface PackageContent {
     readmePath?: string;
     licenseContent?: string;
     licensePath?: string;
+    mcpServerContent?: string;
+    mcpServerPath?: string;
 }
 
 export interface FileContent {

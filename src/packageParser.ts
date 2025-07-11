@@ -35,6 +35,8 @@ export class NuGetPackageParser {
                 let readmePath: string | undefined;
                 let licenseContent: string | undefined;
                 let licensePath: string | undefined;
+                let mcpServerContent: string | undefined;
+                let mcpServerPath: string | undefined;
 
                 zipfile.readEntry();
 
@@ -134,6 +136,26 @@ export class NuGetPackageParser {
                                 zipfile.readEntry();
                             });
                         });
+                    }
+                    // Check if this is an MCP server file
+                    else if (NuGetPackageParser.isMcpServerFile(fileName)) {
+                        logInfo(`Found MCP server file: ${fileName}`);
+                        mcpServerPath = fileName;
+                        zipfile.openReadStream(entry, (err, readStream) => {
+                            if (err) {
+                                logError(`Failed to read MCP server file: ${fileName}`, err);
+                                zipfile.readEntry();
+                                return;
+                            }
+
+                            const chunks: Buffer[] = [];
+                            readStream!.on('data', (chunk) => chunks.push(chunk));
+                            readStream!.on('end', () => {
+                                mcpServerContent = Buffer.concat(chunks).toString('utf8');
+                                logInfo(`MCP server content loaded, length: ${mcpServerContent.length} characters`);
+                                zipfile.readEntry();
+                            });
+                        });
                     } else {
                         zipfile.readEntry();
                     }
@@ -163,7 +185,9 @@ export class NuGetPackageParser {
                         readmeContent,
                         readmePath,
                         licenseContent,
-                        licensePath
+                        licensePath,
+                        mcpServerContent,
+                        mcpServerPath
                     };
                     
                     logInfo(`Package parsing completed successfully for: ${packagePath}`);
@@ -439,6 +463,10 @@ export class NuGetPackageParser {
         const licenseNames = ['license', 'license.md', 'license.txt', 'license.rst', 'licence', 'licence.md', 'licence.txt', 'licence.rst', 'copying', 'copying.md', 'copying.txt'];
         const baseName = path.basename(fileName).toLowerCase();
         return licenseNames.includes(baseName) || baseName.startsWith('license.') || baseName.startsWith('licence.');
+    }
+
+    private static isMcpServerFile(fileName: string): boolean {
+        return fileName.toLowerCase() === '.mcp/server.json';
     }
 
     private static getMimeType(filePath: string): string {
