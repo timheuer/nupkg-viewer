@@ -1437,6 +1437,16 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             return '<p class="no-mcpserver">No MCP server configuration found in this package.</p>';
         }
 
+        // Try to parse and generate startup configuration
+        let startupConfig = '';
+        try {
+            const serverConfig = JSON.parse(mcpServerContent);
+            startupConfig = this.generateMcpStartupConfig(serverConfig);
+        } catch (e) {
+            // If parsing fails, show error
+            startupConfig = 'Error parsing server.json: ' + (e instanceof Error ? e.message : 'Unknown error');
+        }
+
         // Try to format the JSON for better readability
         let formattedContent = mcpServerContent;
         try {
@@ -1450,12 +1460,96 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         return `
             <div class="mcpserver-content">
                 <div class="mcpserver-header">
+                    <h3><span class="codicon codicon-mcp"></span> MCP Startup Configuration</h3>
+                    <small>Generated startup configuration for MCP client</small>
+                </div>
+                <pre class="json-content">${this.escapeHtml(startupConfig)}</pre>
+            </div>
+            
+            <div class="mcpserver-content" style="margin-top: 20px;">
+                <div class="mcpserver-header">
                     <h3><span class="codicon codicon-mcp"></span> ${mcpServerPath || 'MCP Server Configuration'}</h3>
                     <small>Model Context Protocol Server Configuration</small>
                 </div>
                 <pre class="json-content">${this.escapeHtml(formattedContent)}</pre>
             </div>
         `;
+    }
+
+    private generateMcpStartupConfig(serverConfig: any): string {
+        try {
+            const inputs: any[] = [];
+            const servers: any = {};
+
+            // Process packages
+            if (serverConfig.packages && Array.isArray(serverConfig.packages)) {
+                for (const pkg of serverConfig.packages) {
+                    if (!pkg.name) {
+                        continue;
+                    }
+
+                    // Extract inputs from environment variables
+                    if (pkg.environment_variables && Array.isArray(pkg.environment_variables)) {
+                        for (const envVar of pkg.environment_variables) {
+                            if (envVar.variables && typeof envVar.variables === 'object') {
+                                for (const [varName, varConfig] of Object.entries(envVar.variables)) {
+                                    if (typeof varConfig === 'object' && varConfig !== null) {
+                                        const config = varConfig as any;
+                                        inputs.push({
+                                            type: "promptString",
+                                            id: varName,
+                                            description: config.description || `Configuration for ${varName}`,
+                                            password: config.is_secret || false
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Create server configuration
+                    const serverName = pkg.name;
+                    const server: any = {
+                        type: "stdio",
+                        command: "dnx",
+                        args: [`${serverName}@${pkg.version || ''}`, "--yes", "--"]
+                    };
+
+                    // Add package arguments to args
+                    if (pkg.package_arguments && Array.isArray(pkg.package_arguments)) {
+                        for (const arg of pkg.package_arguments) {
+                            if (arg.type === 'positional' && arg.value) {
+                                server.args.push(arg.value);
+                            }
+                        }
+                    }
+
+                    // Add environment variables
+                    if (pkg.environment_variables && Array.isArray(pkg.environment_variables)) {
+                        server.env = {};
+                        for (const envVar of pkg.environment_variables) {
+                            if (envVar.name && envVar.variables) {
+                                // Map environment variable to input reference
+                                for (const varName of Object.keys(envVar.variables)) {
+                                    server.env[envVar.name] = `\${input:${varName}}`;
+                                }
+                            }
+                        }
+                    }
+
+                    servers[serverName] = server;
+                }
+            }
+
+            const startupConfig = {
+                inputs,
+                servers
+            };
+
+            return JSON.stringify(startupConfig, null, 2);
+        } catch (error) {
+            return `Error generating startup configuration: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        }
     }
 
     private escapeHtml(text: string): string {
