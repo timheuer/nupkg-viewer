@@ -170,7 +170,7 @@ suite('MCP Server Test Suite', () => {
                         const server: any = {
                             type: "stdio",
                             command: "dnx",
-                            args: [`${serverName}@`, "--yes", "--"]
+                            args: [`${serverName}@${pkg.version || ''}`, "--yes", "--"]
                         };
 
                         // Add package arguments to args
@@ -223,7 +223,7 @@ suite('MCP Server Test Suite', () => {
         assert.strictEqual(Object.keys(parsedResult.servers).length, 1, 'Should have one server');
         assert.strictEqual(parsedResult.servers['Knapcode.SampleMcpServer'].type, 'stdio', 'Should have correct server type');
         assert.strictEqual(parsedResult.servers['Knapcode.SampleMcpServer'].command, 'dnx', 'Should have correct command');
-        assert.deepStrictEqual(parsedResult.servers['Knapcode.SampleMcpServer'].args, ['Knapcode.SampleMcpServer@', '--yes', '--', 'mcp', 'start'], 'Should have correct args');
+        assert.deepStrictEqual(parsedResult.servers['Knapcode.SampleMcpServer'].args, ['Knapcode.SampleMcpServer@0.6.0-beta', '--yes', '--', 'mcp', 'start'], 'Should have correct args with version');
         assert.strictEqual(parsedResult.servers['Knapcode.SampleMcpServer'].env.WEATHER_CHOICES, '${input:weather_choices}', 'Should have correct environment variable mapping');
     });
 

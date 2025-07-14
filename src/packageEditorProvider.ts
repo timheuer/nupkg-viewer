@@ -1512,7 +1512,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     const server: any = {
                         type: "stdio",
                         command: "dnx",
-                        args: [`${serverName}@`, "--yes", "--"]
+                        args: [`${serverName}@${pkg.version || ''}`, "--yes", "--"]
                     };
 
                     // Add package arguments to args
