@@ -367,7 +367,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                         </div>
                         <div class="package-info">
                             <h1 class="package-title">${metadata.title || metadata.id}</h1>
-                            <div class="package-id">ID: ${metadata.id}</div>
+                            <div class="package-id">ID: <a href="https://www.nuget.org/packages/${metadata.id}" target="_blank">${metadata.id}</a></div>
                             <div class="package-version">Version: ${metadata.version}</div>
                             ${metadata.authors && metadata.authors.length > 0 ? `<div class="package-authors">By: ${metadata.authors.join(', ')}</div>` : ''}
                             ${this.getLicenseInfoHtml(metadata)}
