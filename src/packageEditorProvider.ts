@@ -363,7 +363,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     <!-- Package Header -->
                     <div class="package-header">
                         <div class="package-icon">
-                            ${iconDataUrl ? `<img src="${iconDataUrl}" alt="Package Icon" />` : '<div class="default-icon"><span class="codicon codicon-package"></span></div>'}
+                            ${iconDataUrl ? `<img src="${iconDataUrl}" alt="Package Icon" />` : `<div class="default-icon"><span class="codicon ${this.isMcpServerPackage(metadata) ? 'codicon-mcp' : 'codicon-package'}"></span></div>`}
                         </div>
                         <div class="package-info">
                             <h1 class="package-title">${metadata.title || metadata.id}</h1>
