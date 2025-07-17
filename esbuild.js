@@ -69,8 +69,9 @@ async function main() {
     external: ['vscode'],
     logLevel: 'silent',
     plugins: [
-      /* add to the end of plugins array       copyCodiconAssetsPlugin,*/
+      /* add to the end of plugins array */
       esbuildProblemMatcherPlugin,
+      copyCodiconAssetsPlugin,
     ],
     // Define NODE_ENV for production builds
     define: {
