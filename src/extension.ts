@@ -1,8 +1,9 @@
+import { sanitizeLog } from './sanitizeLog';
+import { logMemory } from './logMemory';
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { NuGetPackageEditorProvider } from './packageEditorProvider';
-import { NuGetPackageParser } from './packageParser';
 
 // Global output channel for logging
 let outputChannel: vscode.LogOutputChannel;
@@ -58,6 +59,7 @@ export function logInfo(message: string): void {
 		return;
 	}
 	getOutputChannel().info(message);
+	logMemory.add(`[INFO] ${message}`);
 }
 
 export function logError(message: string, error?: Error): void {
@@ -65,8 +67,10 @@ export function logError(message: string, error?: Error): void {
 		return;
 	}
 	getOutputChannel().error(message);
+	logMemory.add(`[ERROR] ${message}`);
 	if (error) {
 		getOutputChannel().error(error.stack || error.message);
+		logMemory.add(`[ERROR] ${error.stack || error.message}`);
 	}
 }
 
@@ -75,6 +79,7 @@ export function logWarning(message: string): void {
 		return;
 	}
 	getOutputChannel().warn(message);
+	logMemory.add(`[WARN] ${message}`);
 }
 
 export function logDebug(message: string): void {
@@ -82,6 +87,7 @@ export function logDebug(message: string): void {
 		return;
 	}
 	getOutputChannel().debug(message);
+	logMemory.add(`[DEBUG] ${message}`);
 }
 
 export function logTrace(message: string): void {
@@ -89,6 +95,7 @@ export function logTrace(message: string): void {
 		return;
 	}
 	getOutputChannel().trace(message);
+	logMemory.add(`[TRACE] ${message}`);
 }
 
 // This method is called when your extension is activated
@@ -166,9 +173,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const decorationProvider = vscode.window.registerFileDecorationProvider({
 			provideFileDecoration: (uri: vscode.Uri) => {
-				logTrace(`Checking file decoration for: ${uri.fsPath}`);
+				// Sanitize the path before logging
+				const sanitizedPath = sanitizeLog(uri.fsPath);
+				logTrace(`Checking file decoration for: ${sanitizedPath}`);
 				if (uri.fsPath.endsWith('.nupkg')) {
-					logTrace(`Applying decoration to .nupkg file: ${uri.fsPath}`);
+					logTrace(`Applying decoration to .nupkg file: ${sanitizedPath}`);
 					return {
 						badge: '📦',
 						color: new vscode.ThemeColor('editorInfo.foreground'),
@@ -191,6 +200,26 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(openPackageViewerCommand);
 		context.subscriptions.push(decorationProvider);
 		logTrace('All commands registered successfully');
+
+		// Register the reportIssue command
+		logTrace('Registering reportIssue command...');
+		const reportIssueCommand = vscode.commands.registerCommand('nupkg-viewer.reportIssue', async () => {
+			logTrace('reportIssue command executed');
+			try {
+				const rawLog = logMemory.getAll();
+				const logContents = sanitizeLog(rawLog);
+				const wrappedLog = `<details><summary>Log Output</summary>\n\n<pre>${logContents}</pre>\n\n</details>`;
+				await vscode.commands.executeCommand('vscode.openIssueReporter', {
+					extensionId: 'timheuer.nupkg-viewer',
+					data: wrappedLog
+				});
+				logTrace('Issue reporter opened with sanitized log output as data');
+			} catch (error) {
+				logError('Error opening issue reporter', error instanceof Error ? error : undefined);
+				vscode.window.showErrorMessage('Failed to open issue reporter');
+			}
+		});
+		context.subscriptions.push(reportIssueCommand);
 
 		logTrace('Extension activation completed successfully');
 	} catch (error) {
