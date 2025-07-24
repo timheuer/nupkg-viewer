@@ -159,7 +159,7 @@
     "typescript": "^5.8.2"
   },
   "dependencies": {
-    "@timheuer/vscode-ext-logger": "^0.1.9",
+    "@timheuer/vscode-ext-logger": "^0.1.15",
     "@vscode/codicons": "^0.0.38",
     "xml2js": "^0.6.0",
     "yauzl": "^3.0.0"

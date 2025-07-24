@@ -1,7 +1,7 @@
 import { sanitizeLog } from './sanitizeLog';
 import * as vscode from 'vscode';
 import { NuGetPackageEditorProvider } from './packageEditorProvider';
-import { Logger, createLoggerFromConfig } from '@timheuer/vscode-ext-logger';
+import { Logger, createLoggerFromConfig, getLogContentsForChannel } from '@timheuer/vscode-ext-logger';
 
 // Global output channel for logging
 let logger: Logger;
@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
 	// Initialize logger
 	const channelName = context.extension.packageJSON.displayName;
 
-	logger = createLoggerFromConfig(channelName, 'nupkg-viewer', 'logLevel');
+	logger = createLoggerFromConfig(channelName, 'nupkg-viewer', 'logLevel', 'info', true, context);
 	logger.info('Extension "nupkg-viewer" is activating...');
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
@@ -120,19 +120,24 @@ export function activate(context: vscode.ExtensionContext) {
 		const reportIssueCommand = vscode.commands.registerCommand('nupkg-viewer.reportIssue', async () => {
 			logger.trace('reportIssue command executed');
 			try {
-				// Get the log contents from the logger's output channel
 				let logContents = '';
 				try {
-					// The @timheuer/vscode-ext-logger creates a LogOutputChannel named 'nupkg-viewer'
-					// The log file will be named 'nupkg-viewer.log' in the extension's log directory
-					const logFilePath = vscode.Uri.joinPath(context.logUri, `${channelName}.log`);
-					const logFileContent = await vscode.workspace.fs.readFile(logFilePath);
-					logContents = Buffer.from(logFileContent).toString('utf8');
+					// Get the log contents from the logger's output channel
+					logger.trace('Attempting to read log file contents');
+					const logResult = await getLogContentsForChannel(context.extension.packageJSON.displayName, context);
+
+					if (logResult.success && logResult.contents) {
+						logger.trace('Log file read successfully');
+						logContents = logResult.contents;
+					} else {
+						logger.error('Failed to read log file', logResult.error);
+						logContents = `Log file could not be read. Please check the Output panel -> ${channelName} for log information.`;
+					}
 				} catch (logError) {
 					logger.warn('Could not read log file, using fallback message', logError instanceof Error ? logError : undefined);
 					logContents = `Log file could not be read. Please check the Output panel -> ${channelName} for log information.`;
 				}
-				
+
 				const sanitizedLog = sanitizeLog(logContents);
 				const wrappedLog = `<details><summary>Log Output</summary>\n\n<pre>${sanitizedLog}</pre>\n\n</details>`;
 				await vscode.commands.executeCommand('vscode.openIssueReporter', {
