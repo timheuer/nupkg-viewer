@@ -1,17 +1,17 @@
 // Test file to verify logging functionality
 // This file can be run manually to test the logging behavior
 
-import { logInfo, logError, logWarning, logDebug, logTrace } from '../extension';
+import { logger } from '../extension';
 
 // This function can be called to test all logging levels
 export function testLogging(): void {
     console.log('Testing logging functionality...');
     
-    logError('This is an error message');
-    logWarning('This is a warning message');
-    logInfo('This is an info message');
-    logDebug('This is a debug message');
-    logTrace('This is a trace message');
+    logger.error('This is an error message');
+    logger.warn('This is a warning message');
+    logger.info('This is an info message');
+    logger.debug('This is a debug message');
+    logger.trace('This is a trace message');
     
     console.log('Logging test completed. Check the NuGet Package Viewer output channel to see which messages appear based on your log level setting.');
 }

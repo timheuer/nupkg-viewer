@@ -2,7 +2,7 @@ import * as yauzl from 'yauzl';
 import * as xml2js from 'xml2js';
 import * as path from 'path';
 import { NuGetPackageMetadata, PackageContent, PackageFile, PackageDependency, FileContent, PackageType } from './types';
-import { logInfo, logError, logWarning, logDebug, logTrace } from './extension';
+import { logger } from './extension';
 
 export class NuGetPackageParser {
     
@@ -10,23 +10,23 @@ export class NuGetPackageParser {
      * Parse a .nupkg file and extract its metadata and contents
      */
     public static async parsePackage(packagePath: string): Promise<PackageContent> {
-        logInfo(`Starting to parse package: ${packagePath}`);
+        logger.info(`Starting to parse package: ${packagePath}`);
         return new Promise((resolve, reject) => {
             yauzl.open(packagePath, { lazyEntries: true }, (err, zipfile) => {
                 if (err) {
-                    logError(`Failed to open package file: ${packagePath}`, err);
+                    logger.error(`Failed to open package file: ${packagePath}`, err);
                     reject(err);
                     return;
                 }
 
                 if (!zipfile) {
                     const error = new Error('Failed to open package file');
-                    logError(`Zipfile is null for package: ${packagePath}`);
+                    logger.error(`Zipfile is null for package: ${packagePath}`);
                     reject(error);
                     return;
                 }
 
-                logInfo(`Package file opened successfully, starting to read entries...`);
+                logger.info(`Package file opened successfully, starting to read entries...`);
                 const files: PackageFile[] = [];
                 let nuspecContent: string | undefined;
                 let iconData: Buffer | undefined;
@@ -42,7 +42,7 @@ export class NuGetPackageParser {
 
                 zipfile.on('entry', (entry) => {
                     const fileName = entry.fileName;
-                    logTrace(`Processing entry: ${fileName}`);
+                    logger.trace(`Processing entry: ${fileName}`);
                     
                     // Create file entry
                     const file: PackageFile = {
@@ -55,10 +55,10 @@ export class NuGetPackageParser {
 
                     // Check if this is the .nuspec file
                     if (fileName.endsWith('.nuspec')) {
-                        logInfo(`Found .nuspec file: ${fileName}`);
+                        logger.info(`Found .nuspec file: ${fileName}`);
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
-                                logError(`Failed to read .nuspec file: ${fileName}`, err);
+                                logger.error(`Failed to read .nuspec file: ${fileName}`, err);
                                 zipfile.readEntry();
                                 return;
                             }
@@ -67,12 +67,12 @@ export class NuGetPackageParser {
                             readStream!.on('data', (chunk) => chunks.push(chunk));
                             readStream!.on('end', async () => {
                                 nuspecContent = Buffer.concat(chunks).toString('utf8');
-                                logInfo(`Read .nuspec content, length: ${nuspecContent.length} characters`);
+                                logger.info(`Read .nuspec content, length: ${nuspecContent.length} characters`);
                                 try {
                                     metadata = await NuGetPackageParser.parseNuspec(nuspecContent);
-                                    logInfo(`Successfully parsed .nuspec metadata`);
+                                    logger.info(`Successfully parsed .nuspec metadata`);
                                 } catch (parseErr) {
-                                    logError(`Failed to parse .nuspec`, parseErr instanceof Error ? parseErr : undefined);
+                                    logger.error(`Failed to parse .nuspec`, parseErr instanceof Error ? parseErr : undefined);
                                 }
                                 zipfile.readEntry();
                             });
@@ -80,10 +80,10 @@ export class NuGetPackageParser {
                     } 
                     // Check if this is an icon file
                     else if (NuGetPackageParser.isIconFile(fileName)) {
-                        logTrace(`Found icon file: ${fileName}`);
+                        logger.trace(`Found icon file: ${fileName}`);
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
-                                logError(`Failed to read icon file: ${fileName}`, err);
+                                logger.error(`Failed to read icon file: ${fileName}`, err);
                                 zipfile.readEntry();
                                 return;
                             }
@@ -92,18 +92,18 @@ export class NuGetPackageParser {
                             readStream!.on('data', (chunk) => chunks.push(chunk));
                             readStream!.on('end', () => {
                                 iconData = Buffer.concat(chunks);
-                                logInfo(`Icon data loaded, size: ${iconData.length} bytes`);
+                                logger.info(`Icon data loaded, size: ${iconData.length} bytes`);
                                 zipfile.readEntry();
                             });
                         });
                     }
                     // Check if this is a readme file
                     else if (NuGetPackageParser.isReadmeFile(fileName)) {
-                        logTrace(`Found readme file: ${fileName}`);
+                        logger.trace(`Found readme file: ${fileName}`);
                         readmePath = fileName;
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
-                                logError(`Failed to read readme file: ${fileName}`, err);
+                                logger.error(`Failed to read readme file: ${fileName}`, err);
                                 zipfile.readEntry();
                                 return;
                             }
@@ -112,18 +112,18 @@ export class NuGetPackageParser {
                             readStream!.on('data', (chunk) => chunks.push(chunk));
                             readStream!.on('end', () => {
                                 readmeContent = Buffer.concat(chunks).toString('utf8');
-                                logInfo(`Readme content loaded, length: ${readmeContent.length} characters`);
+                                logger.info(`Readme content loaded, length: ${readmeContent.length} characters`);
                                 zipfile.readEntry();
                             });
                         });
                     }
                     // Check if this is a license file
                     else if (NuGetPackageParser.isLicenseFile(fileName)) {
-                        logInfo(`Found license file: ${fileName}`);
+                        logger.info(`Found license file: ${fileName}`);
                         licensePath = fileName;
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
-                                logError(`Failed to read license file: ${fileName}`, err);
+                                logger.error(`Failed to read license file: ${fileName}`, err);
                                 zipfile.readEntry();
                                 return;
                             }
@@ -132,18 +132,18 @@ export class NuGetPackageParser {
                             readStream!.on('data', (chunk) => chunks.push(chunk));
                             readStream!.on('end', () => {
                                 licenseContent = Buffer.concat(chunks).toString('utf8');
-                                logInfo(`License content loaded, length: ${licenseContent.length} characters`);
+                                logger.info(`License content loaded, length: ${licenseContent.length} characters`);
                                 zipfile.readEntry();
                             });
                         });
                     }
                     // Check if this is an MCP server file
                     else if (NuGetPackageParser.isMcpServerFile(fileName)) {
-                        logInfo(`Found MCP server file: ${fileName}`);
+                        logger.info(`Found MCP server file: ${fileName}`);
                         mcpServerPath = fileName;
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
-                                logError(`Failed to read MCP server file: ${fileName}`, err);
+                                logger.error(`Failed to read MCP server file: ${fileName}`, err);
                                 zipfile.readEntry();
                                 return;
                             }
@@ -152,7 +152,7 @@ export class NuGetPackageParser {
                             readStream!.on('data', (chunk) => chunks.push(chunk));
                             readStream!.on('end', () => {
                                 mcpServerContent = Buffer.concat(chunks).toString('utf8');
-                                logInfo(`MCP server content loaded, length: ${mcpServerContent.length} characters`);
+                                logger.info(`MCP server content loaded, length: ${mcpServerContent.length} characters`);
                                 zipfile.readEntry();
                             });
                         });
@@ -162,20 +162,20 @@ export class NuGetPackageParser {
                 });
 
                 zipfile.on('end', () => {
-                    logInfo(`Finished reading all entries from package. Total files: ${files.length}`);
+                    logger.info(`Finished reading all entries from package. Total files: ${files.length}`);
                     if (!metadata) {
                         const error = new Error('No .nuspec file found or failed to parse metadata');
-                        logError('Package parsing failed: No metadata found');
+                        logger.error('Package parsing failed: No metadata found');
                         // Close the ZIP file before rejecting
                         zipfile.close();
                         reject(error);
                         return;
                     }
 
-                    logTrace('Building file tree structure...');
+                    logger.trace('Building file tree structure...');
                     // Build file tree structure
                     const fileTree = NuGetPackageParser.buildFileTree(files);
-                    logTrace(`File tree built successfully with ${fileTree.length} top-level entries`);
+                    logger.trace(`File tree built successfully with ${fileTree.length} top-level entries`);
 
                     const result: PackageContent = {
                         metadata,
@@ -190,14 +190,14 @@ export class NuGetPackageParser {
                         mcpServerPath
                     };
                     
-                    logInfo(`Package parsing completed successfully for: ${packagePath}`);
+                    logger.info(`Package parsing completed successfully for: ${packagePath}`);
                     // Close the ZIP file before resolving
                     zipfile.close();
                     resolve(result);
                 });
 
                 zipfile.on('error', (error) => {
-                    logError(`Zipfile error while parsing package: ${packagePath}`, error);
+                    logger.error(`Zipfile error while parsing package: ${packagePath}`, error);
                     // Close the ZIP file on error
                     zipfile.close();
                     reject(error);
@@ -210,18 +210,18 @@ export class NuGetPackageParser {
      * Get the content of a specific file from the package
      */
     public static async getFileContent(packagePath: string, filePath: string): Promise<FileContent> {
-        logTrace(`Getting file content for: ${filePath} from package: ${packagePath}`);
+        logger.trace(`Getting file content for: ${filePath} from package: ${packagePath}`);
         return new Promise((resolve, reject) => {
             yauzl.open(packagePath, { lazyEntries: true }, (err, zipfile) => {
                 if (err) {
-                    logError(`Failed to open package for file content: ${packagePath}`, err);
+                    logger.error(`Failed to open package for file content: ${packagePath}`, err);
                     reject(err);
                     return;
                 }
 
                 if (!zipfile) {
                     const error = new Error('Failed to open package file');
-                    logError(`Zipfile is null when getting file content from: ${packagePath}`);
+                    logger.error(`Zipfile is null when getting file content from: ${packagePath}`);
                     reject(error);
                     return;
                 }
@@ -230,10 +230,10 @@ export class NuGetPackageParser {
 
                 zipfile.on('entry', (entry) => {
                     if (entry.fileName === filePath) {
-                        logTrace(`Found target file in package: ${filePath}`);
+                        logger.trace(`Found target file in package: ${filePath}`);
                         zipfile.openReadStream(entry, (err, readStream) => {
                             if (err) {
-                                logError(`Failed to open read stream for file: ${filePath}`, err);
+                                logger.error(`Failed to open read stream for file: ${filePath}`, err);
                                 // Close the ZIP file before rejecting
                                 zipfile.close();
                                 reject(err);
@@ -245,7 +245,7 @@ export class NuGetPackageParser {
                             readStream!.on('end', () => {
                                 const content = Buffer.concat(chunks);
                                 const mimeType = NuGetPackageParser.getMimeType(filePath);
-                                logTrace(`File content retrieved successfully: ${filePath}, size: ${content.length} bytes, type: ${mimeType}`);
+                                logger.trace(`File content retrieved successfully: ${filePath}, size: ${content.length} bytes, type: ${mimeType}`);
                                 
                                 // Close the ZIP file before resolving
                                 zipfile.close();
@@ -257,7 +257,7 @@ export class NuGetPackageParser {
                             });
                             
                             readStream!.on('error', (streamErr) => {
-                                logError(`Error reading stream for file: ${filePath}`, streamErr);
+                                logger.error(`Error reading stream for file: ${filePath}`, streamErr);
                                 zipfile.close();
                                 reject(streamErr);
                             });
@@ -269,14 +269,14 @@ export class NuGetPackageParser {
 
                 zipfile.on('end', () => {
                     const error = new Error(`File not found: ${filePath}`);
-                    logError(`File not found in package: ${filePath}`);
+                    logger.error(`File not found in package: ${filePath}`);
                     // Close the ZIP file before rejecting
                     zipfile.close();
                     reject(error);
                 });
 
                 zipfile.on('error', (error) => {
-                    logError(`Zipfile error while getting file content from: ${packagePath}`, error);
+                    logger.error(`Zipfile error while getting file content from: ${packagePath}`, error);
                     // Close the ZIP file on error
                     zipfile.close();
                     reject(error);
@@ -286,7 +286,7 @@ export class NuGetPackageParser {
     }
 
     private static async parseNuspec(nuspecContent: string): Promise<NuGetPackageMetadata> {
-        logTrace('Parsing .nuspec content...');
+        logger.trace('Parsing .nuspec content...');
         const parser = new xml2js.Parser();
         const result = await parser.parseStringPromise(nuspecContent);
         
@@ -390,12 +390,12 @@ export class NuGetPackageParser {
             packageTypes
         };
 
-        logInfo(`Parsed metadata for package: ${parsedMetadata.id} v${parsedMetadata.version}`);
+        logger.info(`Parsed metadata for package: ${parsedMetadata.id} v${parsedMetadata.version}`);
         return parsedMetadata;
     }
 
     private static buildFileTree(files: PackageFile[]): PackageFile[] {
-        logTrace('Building file tree structure...');
+        logger.trace('Building file tree structure...');
         const tree: PackageFile[] = [];
         const pathMap = new Map<string, PackageFile>();
 
@@ -443,7 +443,7 @@ export class NuGetPackageParser {
             }
         }
 
-        logTrace(`Built file tree with ${tree.length} top-level entries`);
+        logger.trace(`Built file tree with ${tree.length} top-level entries`);
         return tree;
     }
 

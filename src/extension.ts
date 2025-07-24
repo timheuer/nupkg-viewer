@@ -1,137 +1,51 @@
 import { sanitizeLog } from './sanitizeLog';
-import { logMemory } from './logMemory';
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { NuGetPackageEditorProvider } from './packageEditorProvider';
+import { Logger, createLoggerFromConfig } from '@timheuer/vscode-ext-logger';
 
 // Global output channel for logging
-let outputChannel: vscode.LogOutputChannel;
+let logger: Logger;
+
+// Export the logger instance and type for use by other modules
+export { logger, Logger };
 let packageEditorProvider: NuGetPackageEditorProvider | undefined;
-
-// Log level constants
-export enum LogLevel {
-	Off = -1,
-	Error = 0,
-	Warn = 1,
-	Info = 2,
-	Verbose = 3,
-	Trace = 4
-}
-
-// Map string config values to LogLevel enum
-const logLevelMap: { [key: string]: LogLevel } = {
-	'off': LogLevel.Off,
-	'error': LogLevel.Error,
-	'warn': LogLevel.Warn,
-	'info': LogLevel.Info,
-	'verbose': LogLevel.Verbose,
-	'trace': LogLevel.Trace
-};
-
-export function getOutputChannel(): vscode.LogOutputChannel {
-	if (!outputChannel) {
-		outputChannel = vscode.window.createOutputChannel('NuGet Package Viewer', { log: true });
-	}
-	return outputChannel;
-}
-
-// Get the current log level from configuration
-function getCurrentLogLevel(): LogLevel {
-	const config = vscode.workspace.getConfiguration('nupkg-viewer');
-	const logLevelString = config.get<string>('logLevel', 'info');
-	return logLevelMap[logLevelString] ?? LogLevel.Info;
-}
-
-// Check if a message should be logged based on current log level
-function shouldLog(messageLevel: LogLevel): boolean {
-	const currentLevel = getCurrentLogLevel();
-	// If logging is off, don't log anything
-	if (currentLevel === LogLevel.Off) {
-		return false;
-	}
-	return messageLevel <= currentLevel;
-}
-
-// Logging utility functions
-export function logInfo(message: string): void {
-	if (!shouldLog(LogLevel.Info)) {
-		return;
-	}
-	getOutputChannel().info(message);
-	logMemory.add(`[INFO] ${message}`);
-}
-
-export function logError(message: string, error?: Error): void {
-	if (!shouldLog(LogLevel.Error)) {
-		return;
-	}
-	getOutputChannel().error(message);
-	logMemory.add(`[ERROR] ${message}`);
-	if (error) {
-		getOutputChannel().error(error.stack || error.message);
-		logMemory.add(`[ERROR] ${error.stack || error.message}`);
-	}
-}
-
-export function logWarning(message: string): void {
-	if (!shouldLog(LogLevel.Warn)) {
-		return;
-	}
-	getOutputChannel().warn(message);
-	logMemory.add(`[WARN] ${message}`);
-}
-
-export function logDebug(message: string): void {
-	if (!shouldLog(LogLevel.Verbose)) {
-		return;
-	}
-	getOutputChannel().debug(message);
-	logMemory.add(`[DEBUG] ${message}`);
-}
-
-export function logTrace(message: string): void {
-	if (!shouldLog(LogLevel.Trace)) {
-		return;
-	}
-	getOutputChannel().trace(message);
-	logMemory.add(`[TRACE] ${message}`);
-}
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 
-	// Initialize output channel
-	getOutputChannel();
-	logInfo('Extension "nupkg-viewer" is activating...');
+	// Initialize logger
+	const channelName = context.extension.packageJSON.displayName;
+
+	logger = createLoggerFromConfig(channelName, 'nupkg-viewer', 'logLevel');
+	logger.info('Extension "nupkg-viewer" is activating...');
 
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "nupkg-viewer" is now active!');
-	logTrace('Extension activation started');
+	logger.trace('Extension activation started');
 
 	try {        // Register the custom editor provider for .nupkg files
-        logTrace('Registering custom editor provider...');
+        logger.trace('Registering custom editor provider...');
         const { registration: editorProviderRegistration, provider } = NuGetPackageEditorProvider.register(context);
         context.subscriptions.push(editorProviderRegistration);
         
         // Store reference to the provider for cleanup
         packageEditorProvider = provider;
-        logTrace('Custom editor provider registered successfully');
+        logger.trace('Custom editor provider registered successfully');
 
 		// Register the view package command
-		logTrace('Registering viewPackage command...');
+		logger.trace('Registering viewPackage command...');
 		const viewPackageCommand = vscode.commands.registerCommand('nupkg-viewer.viewPackage', async (uri?: vscode.Uri) => {
-			logTrace(`viewPackage command executed with URI: ${uri?.toString() || 'none'}`);
+			logger.trace(`viewPackage command executed with URI: ${uri?.toString() || 'none'}`);
 			try {
 				let fileUri: vscode.Uri;
 				
 				if (uri) {
 					fileUri = uri;
-					logTrace(`Using provided URI: ${fileUri.toString()}`);
+					logger.trace(`Using provided URI: ${fileUri.toString()}`);
 				} else {
-					logTrace('No URI provided, showing file picker...');
+					logger.trace('No URI provided, showing file picker...');
 					// If no URI provided, ask user to select a .nupkg file
 					const result = await vscode.window.showOpenDialog({
 						canSelectFiles: true,
@@ -143,30 +57,30 @@ export function activate(context: vscode.ExtensionContext) {
 					});
 					
 					if (!result || result.length === 0) {
-						logTrace('User cancelled file selection');
+						logger.trace('User cancelled file selection');
 						return;
 					}
 					
 					fileUri = result[0];
-					logTrace(`User selected file: ${fileUri.toString()}`);
+					logger.trace(`User selected file: ${fileUri.toString()}`);
 				}
 
 				// Open the file with our custom editor
-				logInfo(`Opening file with custom editor: ${fileUri.toString()}`);
+				logger.info(`Opening file with custom editor: ${fileUri.toString()}`);
 				await vscode.commands.executeCommand('vscode.openWith', fileUri, 'nupkg-viewer.packageEditor');
-				logTrace('File opened successfully with custom editor');
+				logger.trace('File opened successfully with custom editor');
 				
 			} catch (error) {
 				const errorMessage = `Failed to open package: ${error instanceof Error ? error.message : 'Unknown error'}`;
-				logError('Error in viewPackage command', error instanceof Error ? error : undefined);
+				logger.error('Error in viewPackage command', error instanceof Error ? error : undefined);
 				vscode.window.showErrorMessage(errorMessage);
 			}
 		});
 
 		// Register the open package viewer command
-		logTrace('Registering openPackageViewer command...');
+		logger.trace('Registering openPackageViewer command...');
 		const openPackageViewerCommand = vscode.commands.registerCommand('nupkg-viewer.openPackageViewer', async () => {
-			logTrace('openPackageViewer command executed');
+			logger.trace('openPackageViewer command executed');
 			// This command allows users to select and view any .nupkg file
 			await vscode.commands.executeCommand('nupkg-viewer.viewPackage');
 		});
@@ -175,9 +89,9 @@ export function activate(context: vscode.ExtensionContext) {
 			provideFileDecoration: (uri: vscode.Uri) => {
 				// Sanitize the path before logging
 				const sanitizedPath = sanitizeLog(uri.fsPath);
-				logTrace(`Checking file decoration for: ${sanitizedPath}`);
+				logger.trace(`Checking file decoration for: ${sanitizedPath}`);
 				if (uri.fsPath.endsWith('.nupkg')) {
-					logTrace(`Applying decoration to .nupkg file: ${sanitizedPath}`);
+					logger.trace(`Applying decoration to .nupkg file: ${sanitizedPath}`);
 					return {
 						badge: '📦',
 						color: new vscode.ThemeColor('editorInfo.foreground'),
@@ -199,46 +113,58 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(viewPackageCommand);
 		context.subscriptions.push(openPackageViewerCommand);
 		context.subscriptions.push(decorationProvider);
-		logTrace('All commands registered successfully');
+		logger.trace('All commands registered successfully');
 
 		// Register the reportIssue command
-		logTrace('Registering reportIssue command...');
+		logger.trace('Registering reportIssue command...');
 		const reportIssueCommand = vscode.commands.registerCommand('nupkg-viewer.reportIssue', async () => {
-			logTrace('reportIssue command executed');
+			logger.trace('reportIssue command executed');
 			try {
-				const rawLog = logMemory.getAll();
-				const logContents = sanitizeLog(rawLog);
-				const wrappedLog = `<details><summary>Log Output</summary>\n\n<pre>${logContents}</pre>\n\n</details>`;
+				// Get the log contents from the logger's output channel
+				let logContents = '';
+				try {
+					// The @timheuer/vscode-ext-logger creates a LogOutputChannel named 'nupkg-viewer'
+					// The log file will be named 'nupkg-viewer.log' in the extension's log directory
+					const logFilePath = vscode.Uri.joinPath(context.logUri, `${channelName}.log`);
+					const logFileContent = await vscode.workspace.fs.readFile(logFilePath);
+					logContents = Buffer.from(logFileContent).toString('utf8');
+				} catch (logError) {
+					logger.warn('Could not read log file, using fallback message', logError instanceof Error ? logError : undefined);
+					logContents = `Log file could not be read. Please check the Output panel -> ${channelName} for log information.`;
+				}
+				
+				const sanitizedLog = sanitizeLog(logContents);
+				const wrappedLog = `<details><summary>Log Output</summary>\n\n<pre>${sanitizedLog}</pre>\n\n</details>`;
 				await vscode.commands.executeCommand('vscode.openIssueReporter', {
 					extensionId: 'timheuer.nupkg-viewer',
 					data: wrappedLog
 				});
-				logTrace('Issue reporter opened with sanitized log output as data');
+				logger.trace('Issue reporter opened with sanitized log output as data');
 			} catch (error) {
-				logError('Error opening issue reporter', error instanceof Error ? error : undefined);
+				logger.error('Error opening issue reporter', error instanceof Error ? error : undefined);
 				vscode.window.showErrorMessage('Failed to open issue reporter');
 			}
 		});
 		context.subscriptions.push(reportIssueCommand);
 
-		logTrace('Extension activation completed successfully');
+		logger.trace('Extension activation completed successfully');
 	} catch (error) {
-		logError('Failed to activate extension', error instanceof Error ? error : undefined);
+		logger.error('Failed to activate extension', error instanceof Error ? error : undefined);
 		throw error;
 	}
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {
-	logTrace('Extension "nupkg-viewer" is deactivating...');
+	logger.trace('Extension "nupkg-viewer" is deactivating...');
 	
 	// Clean up the package editor provider
 	if (packageEditorProvider) {
 		packageEditorProvider.dispose();
 		packageEditorProvider = undefined;
 	}
-	
-	if (outputChannel) {
-		outputChannel.dispose();
+
+	if (logger) {
+		logger.dispose();
 	}
 }

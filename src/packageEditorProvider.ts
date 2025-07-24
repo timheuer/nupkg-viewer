@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { NuGetPackageParser } from './packageParser';
 import { PackageContent, FileContent, PackageDependency, NuGetPackageMetadata, PackageType } from './types';
-import { logInfo, logError, logWarning, logDebug, logTrace } from './extension';
+import { logger } from './extension';
 
 export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorProvider<vscode.CustomDocument> {
     
@@ -10,9 +10,9 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
     private activeDocuments = new Map<string, { document: vscode.CustomDocument; disposables: vscode.Disposable[] }>();
     
     public static register(context: vscode.ExtensionContext): { registration: vscode.Disposable; provider: NuGetPackageEditorProvider } {
-        logTrace('Creating NuGetPackageEditorProvider instance...');
+        logger.trace('Creating NuGetPackageEditorProvider instance...');
         const provider = new NuGetPackageEditorProvider(context);
-        logTrace(`Registering custom editor provider with viewType: ${NuGetPackageEditorProvider.viewType}`);
+        logger.trace(`Registering custom editor provider with viewType: ${NuGetPackageEditorProvider.viewType}`);
         const providerRegistration = vscode.window.registerCustomEditorProvider(
             NuGetPackageEditorProvider.viewType,
             provider,
@@ -24,33 +24,33 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 supportsMultipleEditorsPerDocument: false,
             }
         );
-        logTrace('Custom editor provider registration completed');
+        logger.trace('Custom editor provider registration completed');
         return { registration: providerRegistration, provider };
     }
 
     private static readonly viewType = 'nupkg-viewer.packageEditor';
 
     constructor(private readonly context: vscode.ExtensionContext) {
-        logTrace('NuGetPackageEditorProvider constructor called');
+        logger.trace('NuGetPackageEditorProvider constructor called');
     }
 
     /**
      * Clean up all tracked resources - call this during extension deactivation
      */
     public dispose(): void {
-        logTrace('Disposing NuGetPackageEditorProvider and cleaning up all resources...');
+        logger.trace('Disposing NuGetPackageEditorProvider and cleaning up all resources...');
         for (const [uri, tracked] of this.activeDocuments) {
-            logTrace(`Cleaning up resources for document: ${uri}`);
+            logger.trace(`Cleaning up resources for document: ${uri}`);
             tracked.disposables.forEach(disposable => {
                 try {
                     disposable.dispose();
                 } catch (error) {
-                    logError(`Error disposing resource for document ${uri}`, error instanceof Error ? error : undefined);
+                    logger.error(`Error disposing resource for document ${uri}`, error instanceof Error ? error : undefined);
                 }
             });
         }
         this.activeDocuments.clear();
-        logTrace('All resources cleaned up');
+        logger.trace('All resources cleaned up');
     }
 
     async openCustomDocument(
@@ -58,12 +58,12 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         openContext: vscode.CustomDocumentOpenContext,
         _token: vscode.CancellationToken
     ): Promise<vscode.CustomDocument> {
-        logTrace(`openCustomDocument called for URI: ${uri.toString()}`);
+        logger.trace(`openCustomDocument called for URI: ${uri.toString()}`);
         
         const document = {
             uri,
             dispose: () => {
-                logTrace(`Custom document disposed for: ${uri.toString()}`);
+                logger.trace(`Custom document disposed for: ${uri.toString()}`);
                 // Clean up any tracked resources for this document
                 const tracked = this.activeDocuments.get(uri.toString());
                 if (tracked) {
@@ -71,11 +71,11 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                         try {
                             disposable.dispose();
                         } catch (error) {
-                            logError(`Error disposing resource for document ${uri.toString()}`, error instanceof Error ? error : undefined);
+                            logger.error(`Error disposing resource for document ${uri.toString()}`, error instanceof Error ? error : undefined);
                         }
                     });
                     this.activeDocuments.delete(uri.toString());
-                    logTrace(`Cleaned up ${tracked.disposables.length} disposables for document: ${uri.toString()}`);
+                    logger.trace(`Cleaned up ${tracked.disposables.length} disposables for document: ${uri.toString()}`);
                 }
             }
         };
@@ -91,53 +91,53 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         webviewPanel: vscode.WebviewPanel,
         _token: vscode.CancellationToken
     ): Promise<void> {
-        logTrace(`resolveCustomEditor called for document: ${document.uri.toString()}`);
-        logTrace(`Document file path: ${document.uri.fsPath}`);
+        logger.trace(`resolveCustomEditor called for document: ${document.uri.toString()}`);
+        logger.trace(`Document file path: ${document.uri.fsPath}`);
 
         // Setup initial webview properties
         webviewPanel.webview.options = {
             enableScripts: true,
         };
-        logTrace('Webview options configured');
+        logger.trace('Webview options configured');
 
         // Set the HTML content
-        logTrace('Setting loading HTML...');
+        logger.trace('Setting loading HTML...');
         webviewPanel.webview.html = this.getLoadingHtml();
 
         try {
-            logInfo(`Starting to parse package: ${document.uri.fsPath}`);
+            logger.info(`Starting to parse package: ${document.uri.fsPath}`);
             // Parse the package
             const packageContent = await NuGetPackageParser.parsePackage(document.uri.fsPath);
-            logInfo('Package parsed successfully');
-            logTrace(`Package metadata: ${JSON.stringify(packageContent.metadata, null, 2)}`);
-            logTrace(`Package has ${packageContent.files.length} files`);
+            logger.info('Package parsed successfully');
+            logger.trace(`Package metadata: ${JSON.stringify(packageContent.metadata, null, 2)}`);
+            logger.trace(`Package has ${packageContent.files.length} files`);
             
             // Update the webview with package data
-            logTrace('Updating webview with package data...');
+            logger.trace('Updating webview with package data...');
             webviewPanel.webview.html = this.getPackageHtml(packageContent, webviewPanel.webview);
-            logTrace('Webview HTML updated successfully');
+            logger.trace('Webview HTML updated successfully');
 
             // Handle messages from the webview
             const messageDisposable = webviewPanel.webview.onDidReceiveMessage(
                 async (message) => {
-                    logTrace(`Received message from webview: ${JSON.stringify(message)}`);
+                    logger.trace(`Received message from webview: ${JSON.stringify(message)}`);
                     switch (message.type) {
                         case 'openFile':
-                            logTrace(`Request to open file: ${message.filePath}`);
+                            logger.trace(`Request to open file: ${message.filePath}`);
                             await this.handleOpenFile(document.uri.fsPath, message.filePath, webviewPanel.webview);
                             break;
                         case 'openUrl':
                             if (message.url) {
-                                logTrace(`Request to open URL: ${message.url}`);
+                                logger.trace(`Request to open URL: ${message.url}`);
                                 vscode.env.openExternal(vscode.Uri.parse(message.url));
                             }
                             break;
                         case 'installTemplate':
-                            logTrace(`Request to install template: ${document.uri.fsPath}`);
+                            logger.trace(`Request to install template: ${document.uri.fsPath}`);
                             await this.handleInstallTemplate(document.uri.fsPath);
                             break;
                         default:
-                            logWarning(`Unknown message type received: ${message.type}`);
+                            logger.warn(`Unknown message type received: ${message.type}`);
                     }
                 }
             );
@@ -150,7 +150,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             
             // Also handle webview disposal
             const webviewDisposable = webviewPanel.onDidDispose(() => {
-                logTrace(`Webview panel disposed for document: ${document.uri.toString()}`);
+                logger.trace(`Webview panel disposed for document: ${document.uri.toString()}`);
                 // The document dispose will handle cleanup
             });
             
@@ -158,21 +158,21 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 tracked.disposables.push(webviewDisposable);
             }
             
-            logTrace('Message handler and disposal tracking registered');
+            logger.trace('Message handler and disposal tracking registered');
 
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logError(`Failed to parse package: ${errorMessage}`, error instanceof Error ? error : undefined);
+            logger.error(`Failed to parse package: ${errorMessage}`, error instanceof Error ? error : undefined);
             webviewPanel.webview.html = this.getErrorHtml(errorMessage);
         }
     }
 
     private async handleOpenFile(packagePath: string, filePath: string, webview: vscode.Webview): Promise<void> {
-        logTrace(`handleOpenFile called for: ${filePath} in package: ${packagePath}`);
+        logger.trace(`handleOpenFile called for: ${filePath} in package: ${packagePath}`);
         try {
             const fileContent = await NuGetPackageParser.getFileContent(packagePath, filePath);
-            logInfo(`File content retrieved successfully for: ${filePath}`);
-            logTrace(`File content type: ${fileContent.mimeType}, size: ${fileContent.content.length} bytes`);
+            logger.info(`File content retrieved successfully for: ${filePath}`);
+            logger.trace(`File content type: ${fileContent.mimeType}, size: ${fileContent.content.length} bytes`);
             
             // Send file content to webview
             webview.postMessage({
@@ -181,10 +181,10 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 content: fileContent.content.toString('utf8'),
                 mimeType: fileContent.mimeType
             });
-            logTrace(`File content sent to webview for: ${filePath}`);
+            logger.trace(`File content sent to webview for: ${filePath}`);
         } catch (error) {
             const errorMessage = `Failed to open file: ${error instanceof Error ? error.message : 'Unknown error'}`;
-            logError(`handleOpenFile error for ${filePath}`, error instanceof Error ? error : undefined);
+            logger.error(`handleOpenFile error for ${filePath}`, error instanceof Error ? error : undefined);
             webview.postMessage({
                 type: 'error',
                 message: errorMessage
@@ -193,7 +193,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
     }
 
     private async handleInstallTemplate(packagePath: string): Promise<void> {
-        logTrace(`handleInstallTemplate called for package: ${packagePath}`);
+        logger.trace(`handleInstallTemplate called for package: ${packagePath}`);
         
         await vscode.window.withProgress({
             location: vscode.ProgressLocation.Window,
@@ -218,19 +218,19 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 const command = `dotnet new install "${packagePath}"`;
                 terminal.sendText(command);
                 
-                logTrace(`Template installation command sent to terminal for: ${packagePath}`);
+                logger.trace(`Template installation command sent to terminal for: ${packagePath}`);
                 
                 progress.report({ message: "Installing template package..." });
                 
                 // Check if cancelled
                 if (token.isCancellationRequested) {
-                    logTrace('Template installation was cancelled');
+                    logger.trace('Template installation was cancelled');
                     return;
                 }
                 
             } catch (error) {
                 const errorMessage = `Failed to install template: ${error instanceof Error ? error.message : 'Unknown error'}`;
-                logError(`handleInstallTemplate error for ${packagePath}`, error instanceof Error ? error : undefined);
+                logger.error(`handleInstallTemplate error for ${packagePath}`, error instanceof Error ? error : undefined);
                 vscode.window.showErrorMessage(errorMessage);
             }
         });
