@@ -20,6 +20,14 @@ export function activate(context: vscode.ExtensionContext) {
 	logger = createLoggerFromConfig(channelName, 'nupkg-viewer', 'logLevel', 'info', true, context);
 	logger.info('Extension "nupkg-viewer" is activating...');
 
+	// Listen for configuration changes to update logger level
+	const configurationChangeListener = vscode.workspace.onDidChangeConfiguration(event => {
+		if (event.affectsConfiguration('nupkg-viewer.logLevel')) {
+			logger.setLevelFromConfig('nupkg-viewer', 'logLevel');
+			logger.info('Log level updated from configuration');
+		}
+	});
+
 	// Use the console to output diagnostic information (console.log) and errors (console.error)
 	// This line of code will only be executed once when your extension is activated
 	console.log('Congratulations, your extension "nupkg-viewer" is now active!');
@@ -113,6 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
 		context.subscriptions.push(viewPackageCommand);
 		context.subscriptions.push(openPackageViewerCommand);
 		context.subscriptions.push(decorationProvider);
+		context.subscriptions.push(configurationChangeListener);
 		logger.trace('All commands registered successfully');
 
 		// Register the reportIssue command
