@@ -136,6 +136,16 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                             logger.trace(`Request to install template: ${document.uri.fsPath}`);
                             await this.handleInstallTemplate(document.uri.fsPath);
                             break;
+                        case 'copyText':
+                            if (message.text) {
+                                try {
+                                    await vscode.env.clipboard.writeText(message.text);
+                                    logger.trace('Copied JSON text to clipboard via fallback message.');
+                                } catch (err) {
+                                    logger.warn('Failed to write text to clipboard.', err instanceof Error ? err : undefined);
+                                }
+                            }
+                            break;
                         default:
                             logger.warn(`Unknown message type received: ${message.type}`);
                     }
@@ -598,6 +608,8 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             .codicon-json:before { content: "\\eb0f" }
             .codicon-server:before { content: "\\eb50"; }
             .codicon-mcp:before { content: "\\ec47"; }
+            .codicon-copy:before { content: "\\ebcc"; }
+            .codicon-pass:before { content: "\\eba4"; }
 
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -881,6 +893,10 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 background-color: var(--vscode-sideBar-background);
                 border-bottom: 1px solid var(--vscode-input-border);
                 border-radius: 4px 4px 0 0;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                justify-content: space-between;
             }
 
             .mcpserver-header h3 {
@@ -910,6 +926,39 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 overflow-x: auto;
                 white-space: pre-wrap;
                 border-radius: 0 0 4px 4px;
+            }
+
+            .copy-json-btn {
+                background: var(--vscode-button-secondaryBackground);
+                border: 1px solid var(--vscode-button-border, var(--vscode-input-border));
+                color: var(--vscode-button-secondaryForeground, var(--vscode-editor-foreground));
+                cursor: pointer;
+                width: 28px;
+                height: 28px;
+                border-radius: 4px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+                padding: 0;
+            }
+
+            .copy-json-btn:hover {
+                background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-toolbar-hoverBackground));
+            }
+
+            .copy-json-btn.copied {
+                border-color: var(--vscode-testing-iconPassed);
+                color: var(--vscode-testing-iconPassed);
+            }
+
+            .copy-json-btn:focus-visible {
+                outline: 1px solid var(--vscode-focusBorder);
+                outline-offset: 1px;
+            }
+
+            .copy-json-btn .codicon {
+                font-size: 16px;
             }
 
             .no-mcpserver {
@@ -1314,6 +1363,44 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                 });
             }
 
+            async function copyJson(button) {
+                try {
+                    const container = button.closest('.mcpserver-content');
+                    if (!container) return;
+                    const pre = container.querySelector('.json-content');
+                    if (!pre) return;
+                    const text = pre.textContent || '';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(text);
+                        indicateCopied(button);
+                    } else {
+                        vscode.postMessage({ type: 'copyText', text });
+                        indicateCopied(button);
+                    }
+                } catch (err) {
+                    const container = button.closest('.mcpserver-content');
+                    const pre = container ? container.querySelector('.json-content') : null;
+                    vscode.postMessage({ type: 'copyText', text: pre ? (pre.textContent || '') : '' });
+                    indicateCopied(button);
+                }
+            }
+
+            function indicateCopied(button) {
+                button.classList.add('copied');
+                const icon = button.querySelector('.codicon');
+                if (icon) {
+                    icon.classList.remove('codicon-copy');
+                    icon.classList.add('codicon-pass');
+                }
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    if (icon) {
+                        icon.classList.remove('codicon-pass');
+                        icon.classList.add('codicon-copy');
+                    }
+                }, 2000);
+            }
+
             // Handle messages from extension
             window.addEventListener('message', event => {
                 const message = event.data;
@@ -1460,16 +1547,22 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
         return `
             <div class="mcpserver-content">
                 <div class="mcpserver-header">
-                    <h3><span class="codicon codicon-mcp"></span> MCP Startup Configuration</h3>
-                    <small>Generated startup configuration for MCP client</small>
+                    <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
+                        <h3><span class="codicon codicon-mcp"></span> MCP Startup Configuration</h3>
+                        <small>Generated startup configuration for MCP client</small>
+                    </div>
+                    <button class="copy-json-btn" aria-label="Copy startup JSON to clipboard" title="Copy JSON" onclick="copyJson(this)"><span class="codicon codicon-copy"></span></button>
                 </div>
                 <pre class="json-content">${this.escapeHtml(startupConfig)}</pre>
             </div>
             
             <div class="mcpserver-content" style="margin-top: 20px;">
                 <div class="mcpserver-header">
-                    <h3><span class="codicon codicon-mcp"></span> ${mcpServerPath || 'MCP Server Configuration'}</h3>
-                    <small>Model Context Protocol Server Configuration</small>
+                    <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
+                        <h3><span class="codicon codicon-mcp"></span> ${mcpServerPath || 'MCP Server Configuration'}</h3>
+                        <small>Model Context Protocol Server Configuration</small>
+                    </div>
+                    <button class="copy-json-btn" aria-label="Copy server JSON to clipboard" title="Copy JSON" onclick="copyJson(this)"><span class="codicon codicon-copy"></span></button>
                 </div>
                 <pre class="json-content">${this.escapeHtml(formattedContent)}</pre>
             </div>
@@ -1484,7 +1577,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
             // Process packages
             if (serverConfig.packages && Array.isArray(serverConfig.packages)) {
                 for (const pkg of serverConfig.packages) {
-                    if (!pkg.name) {
+                    if (!pkg.identifier) {
                         continue;
                     }
 
@@ -1508,7 +1601,7 @@ export class NuGetPackageEditorProvider implements vscode.CustomReadonlyEditorPr
                     }
 
                     // Create server configuration
-                    const serverName = pkg.name;
+                    const serverName = pkg.identifier;
                     const server: any = {
                         type: "stdio",
                         command: "dnx",
